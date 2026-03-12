@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Competition Account Management</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+        }
+        .info {
+            background: #f4f4f4;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .links {
+            margin: 20px 0;
+        }
+        .links a {
+            display: inline-block;
+            margin: 10px 10px 10px 0;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .links a:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Competition Account Management API</h1>
+    
+    <div class="info">
+        <p>Welcome to the Competition Account Management backend server.</p>
+        <p>This server provides REST API endpoints for managing golf competition accounts, transactions, and financial summaries.</p>
+    </div>
+
+    <div class="links">
+        <a href="/api/docs">API Documentation</a>
+        <a href="/health">Health Check</a>
+    </div>
+
+    <h2>Quick Links</h2>
+    <ul>
+        <li><strong>API Documentation:</strong> <a href="/api/docs">/api/docs</a> - Interactive Swagger UI</li>
+        <li><strong>Health Check:</strong> <a href="/health">/health</a> - Server status</li>
+        <li><strong>Database Health:</strong> <a href="/health/db">/health/db</a> - Database connectivity</li>
+        <li><strong>Readiness Check:</strong> <a href="/health/ready">/health/ready</a> - Full system readiness</li>
+    </ul>
+
+    <h2>Frontend Deployment</h2>
+    <p>To deploy your frontend application:</p>
+    <ol>
+        <li>Build your frontend application</li>
+        <li>Copy the build output to the <code>public/</code> directory</li>
+        <li>Redeploy the backend server</li>
+        <li>Your frontend will be served from the root URL</li>
+    </ol>
+
+    <div class="info">
+        <p><strong>Note:</strong> This is a placeholder page. Replace the contents of the <code>public/</code> directory with your frontend application build.</p>
+    </div>
+</body>
+</html>

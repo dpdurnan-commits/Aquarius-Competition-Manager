@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aquarius Competition Manager</title>
+    <link rel="stylesheet" href="styles.css?v=20260312">
+    <style>
+        /* Presentation Night Button - Inline Override */
+        .presentation-night-button {
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            padding: 10px 20px !important;
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%) !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 6px !important;
+            cursor: pointer !important;
+            font-size: 0.95rem !important;
+            transition: all 0.2s !important;
+            box-shadow: 0 2px 4px rgba(243, 156, 18, 0.3) !important;
+        }
+        .presentation-night-button:hover {
+            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%) !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 4px 8px rgba(243, 156, 18, 0.4) !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Aquarius Competition Manager</h1>
+            <p class="subtitle">Transform and export golf competition transaction data</p>
+            <div class="header-actions">
+                <button id="competition-accounts-button" class="competition-accounts-button" aria-label="Competition Accounts">
+                    <span class="accounts-icon" aria-hidden="true">📊</span>
+                    <span>Competition Accounts</span>
+                </button>
+                <button id="presentation-night-button" class="presentation-night-button" aria-label="Presentation Night Winnings">
+                    <span class="presentation-icon" aria-hidden="true">🏆</span>
+                    <span>Presentation Night</span>
+                </button>
+                <button id="manage-competitions-button" class="manage-competitions-button" aria-label="Manage competitions">
+                    <span class="manage-icon" aria-hidden="true">🏆</span>
+                    <span>Manage Competitions</span>
+                </button>
+            </div>
+        </header>
+
+        <main>
+            <!-- Error Container -->
+            <div id="error-container" class="error-message" style="display: none;" role="alert" aria-live="assertive">
+                <span class="error-icon" aria-hidden="true">⚠️</span>
+                <span id="error-text"></span>
+                <button id="error-dismiss" aria-label="Dismiss error message">Dismiss</button>
+            </div>
+
+            <!-- File Input Section -->
+            <section class="upload-section" aria-labelledby="upload-heading">
+                <h2 id="upload-heading" class="visually-hidden">Upload CSV File</h2>
+                <label for="file-input" class="file-input-label">
+                    <span class="upload-icon" aria-hidden="true">📁</span>
+                    <span>Choose CSV File</span>
+                    <input type="file" id="file-input" accept=".csv" aria-describedby="file-name" class="visually-hidden">
+                </label>
+                <div id="file-name" class="file-name" role="status" aria-live="polite"></div>
+            </section>
+
+            <!-- Loading Indicator -->
+            <div id="loading-indicator" class="loading" style="display: none;" role="status" aria-live="polite">
+                <div class="spinner" aria-hidden="true"></div>
+                <span>Processing...</span>
+            </div>
+
+            <!-- Data Viewer Section -->
+            <section id="data-viewer" aria-labelledby="data-viewer-heading">
+                <h2 id="data-viewer-heading" class="visually-hidden">Competition Records</h2>
+                <div id="empty-state" class="empty-state" role="status">
+                    No competition records found. Please upload a CSV file.
+                </div>
+                
+                <div id="table-container" style="display: none;">
+                    <div class="table-header">
+                        <h2>Transformed Records</h2>
+                        <span id="record-count" class="record-count" role="status" aria-live="polite"></span>
+                    </div>
+                    
+                    <div class="table-wrapper" role="region" aria-labelledby="data-viewer-heading" tabindex="0">
+                        <table id="records-table" aria-label="Competition transaction records">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Date</th>
+                                    <th scope="col">Time</th>
+                                    <th scope="col">Till</th>
+                                    <th scope="col">Type</th>
+                                    <th scope="col">Member</th>
+                                    <th scope="col">Player</th>
+                                    <th scope="col">Competition</th>
+                                    <th scope="col">Total</th>
+                                    <th scope="col">Flag Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="records-body">
+                                <!-- Rows inserted dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Export Button -->
+                    <div class="export-section">
+                        <button id="export-button" class="export-button" aria-label="Export transformed records as CSV file">
+                            <span class="export-icon" aria-hidden="true">💾</span>
+                            <span>Export CSV</span>
+                        </button>
+                        <button id="save-to-database-button" class="save-button" aria-label="Save records to database">
+                            <span class="save-icon" aria-hidden="true">💿</span>
+                            <span>Save to Database</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Transaction Summary Section -->
+            <section id="transaction-summary-section" style="display: none;" aria-labelledby="summary-heading">
+                <div class="summary-header">
+                    <h2 id="summary-heading">Aquarius Golf-Competition Transaction Summary</h2>
+                    <div class="summary-actions">
+                        <button id="check-duplicates-button" class="check-duplicates-button" aria-label="Check for duplicate records">
+                            <span class="check-icon" aria-hidden="true">🔍</span>
+                            <span>Check Duplicates</span>
+                        </button>
+                        <button id="reset-database-button" class="reset-button" aria-label="Reset database and clear all stored data">
+                            <span class="reset-icon" aria-hidden="true">🗑️</span>
+                            <span>Reset Database</span>
+                        </button>
+                    </div>
+                </div>
+                <div id="transaction-summary-container"></div>
+            </section>
+
+            <!-- Competition Accounts View Section -->
+            <section id="competition-accounts-section" style="display: none;" aria-labelledby="competition-accounts-heading">
+                <h2 id="competition-accounts-heading" style="margin-bottom: 20px;">Competition Results Management</h2>
+                <div id="competition-accounts-container"></div>
+            </section>
+
+            <!-- Presentation Night Winnings Distribution Section -->
+            <section id="presentation-night-section" style="display: none;" aria-labelledby="presentation-night-heading">
+                <h2 id="presentation-night-heading" style="margin-bottom: 20px;">Presentation Night Winnings Distribution</h2>
+                <div id="presentation-night-container"></div>
+            </section>
+        </main>
+
+        <!-- Competition Manager Modal -->
+        <div id="competition-manager-modal" class="modal" style="display: none;" role="dialog" aria-labelledby="competition-manager-heading" aria-modal="true">
+            <div class="modal-overlay"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="competition-manager-heading">Manage Competitions</h2>
+                    <button id="close-competition-manager" class="close-button" aria-label="Close competition manager">×</button>
+                </div>
+                
+                <div class="modal-body">
+                    <!-- Error/Success Messages -->
+                    <div id="competition-error-container" class="competition-message" style="display: none;" role="alert" aria-live="assertive">
+                        <span id="competition-error-text"></span>
+                        <button id="competition-error-dismiss" aria-label="Dismiss message">×</button>
+                    </div>
+
+                    <!-- Add Competition Form -->
+                    <div class="competition-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="competition-name-input">Competition Name</label>
+                                <input 
+                                    type="text" 
+                                    id="competition-name-input" 
+                                    placeholder="Competition Name" 
+                                    aria-label="Competition name"
+                                    maxlength="255"
+                                />
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="competition-type-select">Type</label>
+                                <select id="competition-type-select" aria-label="Competition type">
+                                    <option value="singles">Singles</option>
+                                    <option value="doubles">Doubles</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="competition-season-select">Presentation Season</label>
+                                <select id="competition-season-select" aria-label="Presentation season">
+                                    <option value="">Loading seasons...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button id="add-competition-btn" class="primary-button">
+                            <span class="add-icon" aria-hidden="true">➕</span>
+                            <span>Add Competition</span>
+                        </button>
+                    </div>
+
+                    <!-- Competition List -->
+                    <div class="competition-list-container">
+                        <h3 class="competition-list-heading">Competitions</h3>
+                        <div id="competition-list-empty" class="empty-state" style="display: none;">
+                            No competitions yet. Add your first competition above.
+                        </div>
+                        <table id="competition-list-table" class="competition-table" style="display: none;">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Competition Name</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="competition-list-body">
+                                <!-- Rows inserted dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Season Management Section -->
+                    <div class="season-management-section">
+                        <h3 class="season-list-heading">Presentation Seasons</h3>
+                        <div id="season-list-empty" class="empty-state" style="display: none;">
+                            No presentation seasons yet.
+                        </div>
+                        <table id="season-list-table" class="season-table" style="display: none;">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Season Name</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">All Competitions Added</th>
+                                </tr>
+                            </thead>
+                            <tbody id="season-list-body">
+                                <!-- Rows inserted dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Weekly Drill-Down Modal -->
+        <div id="weekly-drilldown-modal" class="modal drill-down-modal" style="display: none;" role="dialog" aria-labelledby="drill-down-heading" aria-modal="true">
+            <div class="modal-overlay"></div>
+            <div class="modal-content drill-down-content">
+                <div class="modal-header drill-down-header">
+                    <h2 id="drill-down-heading">Transactions for Week</h2>
+                    <button id="close-drill-down" class="close-button" aria-label="Close drill-down view">×</button>
+                </div>
+                
+                <div class="modal-body drill-down-body">
+                    <!-- Summary Info -->
+                    <div class="drill-down-summary">
+                        <div class="summary-item">
+                            <span class="label">Total Transactions:</span>
+                            <span id="drill-down-total-count" class="value">0</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="label">Flagged Winnings:</span>
+                            <span id="drill-down-winnings-total" class="value">£0.00</span>
+                        </div>
+                    </div>
+
+                    <!-- Loading Indicator -->
+                    <div id="drill-down-loading" class="loading" style="display: none;" role="status" aria-live="polite">
+                        <div class="spinner" aria-hidden="true"></div>
+                        <span>Loading transactions...</span>
+                    </div>
+
+                    <!-- Transactions Table -->
+                    <div class="table-wrapper drill-down-table-wrapper" role="region" aria-labelledby="drill-down-heading" tabindex="0">
+                        <table id="drill-down-table" class="drill-down-table" aria-label="Weekly transactions">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Date</th>
+                                    <th scope="col">Time</th>
+                                    <th scope="col">Type</th>
+                                    <th scope="col">Member/Player</th>
+                                    <th scope="col">Total</th>
+                                    <th scope="col">Flag Status</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="drill-down-body">
+                                <!-- Rows inserted dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Duplicate Checker Modal -->
+        <div id="duplicate-checker-modal" class="modal" style="display: none;" role="dialog" aria-labelledby="duplicate-checker-heading" aria-modal="true">
+            <div class="modal-overlay"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="duplicate-checker-heading">Duplicate Records Checker</h2>
+                    <button id="close-duplicate-checker" class="close-button" aria-label="Close duplicate checker">×</button>
+                </div>
+                
+                <div class="modal-body">
+                    <!-- Loading Indicator -->
+                    <div id="duplicate-checker-loading" class="loading" style="display: none;" role="status" aria-live="polite">
+                        <div class="spinner" aria-hidden="true"></div>
+                        <span>Checking for duplicates...</span>
+                    </div>
+
+                    <!-- Results Container -->
+                    <div id="duplicate-checker-results" style="display: none;">
+                        <div id="duplicate-checker-summary" class="duplicate-summary"></div>
+                        <div id="duplicate-checker-details" class="duplicate-details"></div>
+                        
+                        <!-- Action Buttons -->
+                        <div id="duplicate-checker-actions" class="duplicate-actions" style="display: none;">
+                            <button id="remove-duplicates-btn" class="danger-button">
+                                <span class="remove-icon" aria-hidden="true">🗑️</span>
+                                <span>Remove Duplicates</span>
+                            </button>
+                            <button id="cancel-remove-btn" class="secondary-button">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Competition CSV Import Tool - Browser-based CSV transformation</p>
+        </footer>
+    </div>
+
+    <!-- Load PapaParse from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <!-- Load application as ES6 module -->
+    <script type="module" src="app.js?v=20260312b"></script>
+</body>
+</html>

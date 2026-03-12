@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear IndexedDB</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+        }
+        .info {
+            background: #f4f4f4;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        button {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #c82333;
+        }
+        button.secondary {
+            background: #6c757d;
+        }
+        button.secondary:hover {
+            background: #5a6268;
+        }
+        #status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .code {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🗑️ Clear IndexedDB Data</h1>
+    
+    <div class="warning">
+        <strong>⚠️ Important:</strong> This will permanently delete all data stored in IndexedDB for this domain. 
+        This is necessary to ensure the application uses the new PostgreSQL backend instead of old browser storage.
+    </div>
+
+    <div class="info">
+        <h3>What is IndexedDB?</h3>
+        <p>IndexedDB is browser storage that the old version of the application used to store data locally. 
+        The new version uses a PostgreSQL database on the server instead.</p>
+        
+        <h3>Why clear it?</h3>
+        <p>If you're seeing unexpected data in the UI that doesn't match what's in PostgreSQL, 
+        it's likely because the browser still has old IndexedDB data that's being displayed.</p>
+    </div>
+
+    <div id="status"></div>
+
+    <h2>Actions</h2>
+    
+    <button onclick="checkIndexedDB()">🔍 Check IndexedDB Status</button>
+    <button onclick="clearIndexedDB()">🗑️ Clear All IndexedDB Data</button>
+    <button onclick="clearBrowserCache()" class="secondary">🧹 Clear Browser Cache</button>
+
+    <h2>Manual Steps (Alternative)</h2>
+    <div class="info">
+        <p>You can also clear IndexedDB manually using browser DevTools:</p>
+        <ol>
+            <li>Press <strong>F12</strong> to open DevTools</li>
+            <li>Go to the <strong>Application</strong> tab (Chrome) or <strong>Storage</strong> tab (Firefox)</li>
+            <li>In the left sidebar, expand <strong>IndexedDB</strong></li>
+            <li>Right-click on <strong>CompetitionAccountDB</strong> and select <strong>Delete database</strong></li>
+            <li>Refresh the page (<strong>Ctrl+Shift+R</strong> or <strong>Cmd+Shift+R</strong>)</li>
+        </ol>
+    </div>
+
+    <h2>After Clearing</h2>
+    <div class="info">
+        <ol>
+            <li>Close this page</li>
+            <li>Go back to <a href="http://localhost:8080" target="_blank">http://localhost:8080</a></li>
+            <li>Hard refresh the page: <strong>Ctrl+Shift+R</strong> (Windows) or <strong>Cmd+Shift+R</strong> (Mac)</li>
+            <li>The application should now show only data from PostgreSQL</li>
+        </ol>
+    </div>
+
+    <script>
+        async function checkIndexedDB() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'info';
+            statusDiv.innerHTML = '<p>Checking IndexedDB...</p>';
+
+            try {
+                const databases = await window.indexedDB.databases();
+                
+                if (databases.length === 0) {
+                    statusDiv.className = 'success';
+                    statusDiv.innerHTML = '<strong>✅ No IndexedDB databases found</strong><p>Your browser storage is clean!</p>';
+                } else {
+                    statusDiv.className = 'warning';
+                    let html = '<strong>⚠️ Found IndexedDB databases:</strong><ul>';
+                    databases.forEach(db => {
+                        html += `<li><strong>${db.name}</strong> (version ${db.version})</li>`;
+                    });
+                    html += '</ul><p>Click "Clear All IndexedDB Data" to remove these.</p>';
+                    statusDiv.innerHTML = html;
+                }
+            } catch (error) {
+                statusDiv.className = 'warning';
+                statusDiv.innerHTML = `<strong>⚠️ Error checking IndexedDB:</strong><p>${error.message}</p>`;
+            }
+        }
+
+        async function clearIndexedDB() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'info';
+            statusDiv.innerHTML = '<p>Clearing IndexedDB...</p>';
+
+            try {
+                const databases = await window.indexedDB.databases();
+                
+                if (databases.length === 0) {
+                    statusDiv.className = 'success';
+                    statusDiv.innerHTML = '<strong>✅ No databases to clear</strong><p>IndexedDB is already empty.</p>';
+                    return;
+                }
+
+                let deletedCount = 0;
+                const errors = [];
+
+                for (const db of databases) {
+                    try {
+                        await new Promise((resolve, reject) => {
+                            const request = window.indexedDB.deleteDatabase(db.name);
+                            request.onsuccess = () => {
+                                deletedCount++;
+                                resolve();
+                            };
+                            request.onerror = () => reject(request.error);
+                            request.onblocked = () => {
+                                console.warn(`Delete blocked for ${db.name}`);
+                                reject(new Error('Delete blocked - close all tabs using this database'));
+                            };
+                        });
+                    } catch (error) {
+                        errors.push(`${db.name}: ${error.message}`);
+                    }
+                }
+
+                if (errors.length === 0) {
+                    statusDiv.className = 'success';
+                    statusDiv.innerHTML = `
+                        <strong>✅ Success!</strong>
+                        <p>Deleted ${deletedCount} IndexedDB database(s).</p>
+                        <p><strong>Next steps:</strong></p>
+                        <ol>
+                            <li>Close this page</li>
+                            <li>Go to <a href="http://localhost:8080" target="_blank">http://localhost:8080</a></li>
+                            <li>Hard refresh: <strong>Ctrl+Shift+R</strong> or <strong>Cmd+Shift+R</strong></li>
+                        </ol>
+                    `;
+                } else {
+                    statusDiv.className = 'warning';
+                    statusDiv.innerHTML = `
+                        <strong>⚠️ Partial success</strong>
+                        <p>Deleted ${deletedCount} database(s), but encountered errors:</p>
+                        <ul>${errors.map(e => `<li>${e}</li>`).join('')}</ul>
+                        <p><strong>Solution:</strong> Close all tabs using the application and try again.</p>
+                    `;
+                }
+            } catch (error) {
+                statusDiv.className = 'warning';
+                statusDiv.innerHTML = `<strong>⚠️ Error:</strong><p>${error.message}</p>`;
+            }
+        }
+
+        function clearBrowserCache() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'info';
+            statusDiv.innerHTML = `
+                <strong>ℹ️ Clear Browser Cache</strong>
+                <p>To clear your browser cache:</p>
+                <ul>
+                    <li><strong>Chrome/Edge:</strong> Ctrl+Shift+Delete (Windows) or Cmd+Shift+Delete (Mac)</li>
+                    <li><strong>Firefox:</strong> Ctrl+Shift+Delete (Windows) or Cmd+Shift+Delete (Mac)</li>
+                </ul>
+                <p>Select "Cached images and files" and click "Clear data"</p>
+                <p>Or simply do a hard refresh on the app page: <strong>Ctrl+Shift+R</strong> or <strong>Cmd+Shift+R</strong></p>
+            `;
+        }
+
+        // Auto-check on load
+        window.addEventListener('load', checkIndexedDB);
+    </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+-- Rollback presentation_night_distributions table
+DROP TRIGGER IF EXISTS update_presentation_night_distributions_updated_at ON presentation_night_distributions;
+DROP INDEX IF EXISTS idx_presentation_night_distributions_unique_active_season;
+DROP INDEX IF EXISTS idx_presentation_night_distributions_transaction_id;
+DROP INDEX IF EXISTS idx_presentation_night_distributions_season_id;
+DROP TABLE IF EXISTS presentation_night_distributions;

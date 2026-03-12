@@ -1,0 +1,58 @@
+{
+  "name": "Competition Account Management",
+  "description": "Backend server for golf competition account management system",
+  "repository": "https://github.com/yourusername/competition-account-management",
+  "keywords": ["node", "express", "postgresql", "typescript"],
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ],
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  },
+  "addons": [
+    {
+      "plan": "heroku-postgresql:mini",
+      "as": "DATABASE"
+    }
+  ],
+  "env": {
+    "NODE_ENV": {
+      "description": "Node environment (production)",
+      "value": "production",
+      "required": true
+    },
+    "JWT_SECRET": {
+      "description": "Secret key for JWT token signing",
+      "generator": "secret",
+      "required": true
+    },
+    "CORS_ORIGINS": {
+      "description": "Comma-separated list of allowed CORS origins",
+      "value": "https://yourdomain.com",
+      "required": true
+    },
+    "MAX_FILE_SIZE": {
+      "description": "Maximum file upload size in bytes",
+      "value": "10485760",
+      "required": false
+    },
+    "DB_POOL_MIN": {
+      "description": "Minimum database connection pool size",
+      "value": "2",
+      "required": false
+    },
+    "DB_POOL_MAX": {
+      "description": "Maximum database connection pool size",
+      "value": "10",
+      "required": false
+    }
+  },
+  "scripts": {
+    "postdeploy": "echo 'Deployment complete. Database migrations will run automatically on startup.'"
+  }
+}
