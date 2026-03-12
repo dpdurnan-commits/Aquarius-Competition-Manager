@@ -1,6 +1,13 @@
-# Competition Account Management System
+# Aquarius Competition Manager
 
-A browser-based application for managing golf competition accounts, tracking transactions, and monitoring competition winnings.
+A full-stack application for managing golf competition accounts, tracking transactions, and monitoring competition winnings. Built with TypeScript backend and vanilla JavaScript frontend.
+
+## 🚀 Quick Links
+
+- **[Production Deployment Guide](RAILWAY_QUICK_START.md)** - Deploy to Railway in minutes
+- **[Complete Deployment Documentation](RAILWAY_DEPLOYMENT.md)** - Detailed deployment instructions
+- **[Production Checklist](PRODUCTION_CHECKLIST.md)** - Pre-deployment verification
+- **[Deployment Summary](DEPLOYMENT_SUMMARY.md)** - Configuration overview
 
 ## Features
 
@@ -11,21 +18,219 @@ A browser-based application for managing golf competition accounts, tracking tra
 - **Competition Purse Tracking**: Monitor the competition purse balance over time
 - **Competition Pot Tracking**: Track the competition pot with accurate winnings calculations
 
-### Competition Winnings Tracking (New)
-- **Competition Management**: Create, edit, and delete named competitions
+### Competition Management
+- **Competition Creation**: Create and manage singles and doubles competitions
+- **Presentation Seasons**: Organize competitions into presentation seasons
+- **Results Import**: Import competition results via CSV
+- **Swindle Money Tracking**: Track and reconcile swindle money payments
+
+### Competition Accounts
+- **Entry Fee Tracking**: Monitor entry fees for all competitions
+- **Winnings Reconciliation**: Match winnings to competition results
+- **Payment Status**: Track paid/unpaid status for entries and winnings
+- **Player Balances**: View account balances for each player
+
+### Presentation Night Winnings Distribution
+- **Winnings Assignment**: Assign cash amounts to competition winners
+- **Competition Costs**: Record general competition expenses (engravings, equipment, etc.)
+- **Cost History**: View and filter competition costs by date
+- **Competition Pot**: Automatic calculation including all costs and distributions
+- **Form Persistence**: Uncommitted entries saved in browser storage
+
+### Competition Winnings Tracking
 - **Transaction Flagging**: Mark "Topup (Competitions)" transactions as prize winnings
 - **Competition Association**: Link flagged transactions to specific competitions
 - **Weekly Drill-Down**: Click any week to view and flag individual transactions
 - **Retrospective Flagging**: Flag historical transactions with automatic recalculation
-- **Visual Indicators**: Clear visual feedback for flagged transactions and competition associations
+- **Visual Indicators**: Clear visual feedback for flagged transactions
 
 ## Technology Stack
 
-- **Frontend**: Vanilla JavaScript (ES6+)
-- **Storage**: IndexedDB for client-side data persistence
-- **Testing**: Jest + jsdom for unit and integration tests
-- **Property-Based Testing**: fast-check for correctness validation
-- **Build**: Webpack for bundling
+### Backend
+- **Runtime**: Node.js with TypeScript
+- **Framework**: Express.js
+- **Database**: PostgreSQL
+- **Security**: Helmet, CORS, Rate Limiting
+- **Testing**: Jest + Supertest
+- **Property-Based Testing**: fast-check
+
+### Frontend
+- **Language**: Vanilla JavaScript (ES6+)
+- **API Client**: Fetch API with retry logic
+- **Testing**: Jest + jsdom
+- **Property-Based Testing**: fast-check
+
+### Deployment
+- **Platform**: Railway (Docker-based)
+- **Database**: Railway PostgreSQL
+- **Static Files**: Served from backend
+
+## Getting Started
+
+### Local Development
+
+#### Prerequisites
+
+- Node.js >= 20.0.0
+- PostgreSQL >= 14
+- Modern web browser
+
+#### Installation
+
+```bash
+# Install backend dependencies
+cd backend
+npm install
+
+# Install frontend dependencies (for testing)
+cd ..
+npm install
+```
+
+#### Configuration
+
+1. Copy environment file:
+```bash
+cd backend
+cp .env.example .env
+```
+
+2. Update `.env` with your local PostgreSQL credentials
+
+#### Running Locally
+
+```bash
+# Start backend server
+cd backend
+npm run dev
+
+# Backend runs on http://localhost:3000
+# Frontend is served from http://localhost:3000
+```
+
+#### Testing
+
+```bash
+# Run backend tests
+cd backend
+npm test
+
+# Run frontend tests
+cd ..
+npm test
+```
+
+## Production Deployment
+
+### Deploy to Railway
+
+1. **Prepare Application**:
+   ```powershell
+   # Windows
+   .\deploy-to-production.ps1
+   
+   # Mac/Linux
+   ./deploy-to-production.sh
+   ```
+
+2. **Push to GitHub**:
+   ```bash
+   git add .
+   git commit -m "Prepare for production"
+   git push origin main
+   ```
+
+3. **Deploy on Railway**:
+   - Create new project from GitHub repo
+   - Add PostgreSQL database
+   - Configure environment variables
+   - Railway auto-deploys
+
+For detailed instructions, see [RAILWAY_QUICK_START.md](RAILWAY_QUICK_START.md)
+
+### Environment Variables
+
+Required for production:
+
+```bash
+NODE_ENV=production
+PORT=3000
+DATABASE_URL=<auto-set-by-railway>
+JWT_SECRET=<generate-with-openssl>
+CORS_ORIGINS=<your-railway-url>
+```
+
+See [backend/.env.production.example](backend/.env.production.example) for complete list.
+
+## Project Structure
+
+```
+.
+├── backend/                 # Backend application
+│   ├── src/
+│   │   ├── routes/         # API routes
+│   │   ├── services/       # Business logic
+│   │   ├── middleware/     # Express middleware
+│   │   ├── db/            # Database migrations
+│   │   └── types/         # TypeScript types
+│   ├── public/            # Frontend static files (production)
+│   ├── Dockerfile         # Docker configuration
+│   └── railway.json       # Railway configuration
+├── *.js                   # Frontend JavaScript files
+├── *.css                  # Frontend styles
+├── index.html            # Frontend HTML
+└── deploy-to-production.* # Deployment scripts
+```
+
+## API Documentation
+
+When running locally, API documentation is available at:
+- Swagger UI: http://localhost:3000/api/docs
+- OpenAPI JSON: http://localhost:3000/api/docs/openapi.json
+
+## Database Schema
+
+The application uses PostgreSQL with the following main tables:
+- `transactions` - All transaction records
+- `competitions` - Competition definitions
+- `competition_results` - Competition results and player data
+- `presentation_seasons` - Presentation season groupings
+- `presentation_night_distributions` - Winnings distributions
+- `competition_costs` - General competition expenses
+- `flagged_transactions` - Prize winning transactions
+
+Migrations are located in `backend/src/db/migrations/`
+
+## Development
+
+### Running Tests
+
+```bash
+# Backend unit tests
+cd backend
+npm test
+
+# Backend integration tests
+npm run test:integration
+
+# Frontend tests
+cd ..
+npm test
+
+# All tests
+npm run test:all
+```
+
+### Database Management
+
+```bash
+# Reset local database
+cd backend
+npm run db:reset
+
+# Verify schema
+npm run db:verify
+```
 
 ## Getting Started
 
