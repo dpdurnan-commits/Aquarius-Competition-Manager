@@ -7,8 +7,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production && \
+# Install ALL dependencies (including devDependencies for build)
+RUN npm ci && \
     npm cache clean --force
 
 # Copy source code
@@ -35,6 +35,9 @@ COPY --from=builder /app/dist ./dist
 
 # Copy public directory for static files
 COPY public ./public
+
+# Copy database migrations
+COPY src/db/migrations ./src/db/migrations
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
