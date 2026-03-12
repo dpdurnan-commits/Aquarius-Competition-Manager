@@ -60,10 +60,10 @@ async function main() {
   try {
     await db.connect();
     
-    // Run migrations in development mode
-    if (config.nodeEnv === 'development') {
-      await db.runMigrations();
-    }
+    // Run migrations on startup
+    console.log('Running database migrations...');
+    await db.runMigrations();
+    console.log('Database migrations completed successfully');
 
     // Initialize and start server
     server = new APIServer(config, db);
