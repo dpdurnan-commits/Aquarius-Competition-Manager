@@ -18,12 +18,12 @@ export const authRateLimiter = rateLimit({
 
 /**
  * General API rate limiter to prevent abuse
- * Limits to 500 requests per 15 minutes per IP address in production
- * More lenient in development (1000 requests per 15 minutes)
+ * Limits to 1000 requests per 15 minutes per IP address in production
+ * Very generous limit to accommodate CSV uploads and normal usage
  */
 export const apiRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 500 : 1000, // Increased for CSV uploads with many records
+  max: 1000, // Very generous limit for both dev and production
   message: {
     error: 'Too many requests from this IP, please try again later'
   },
