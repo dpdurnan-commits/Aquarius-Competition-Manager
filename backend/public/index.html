@@ -336,13 +336,13 @@
         </footer>
     </div>
 
-    <!-- Load PapaParse from CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" crossorigin="anonymous"></script>
+    <!-- Load PapaParse locally (CDN blocked in production) -->
+    <script src="papaparse.min.js"></script>
     
     <!-- Verify PapaParse loaded -->
     <script>
       if (typeof Papa === 'undefined') {
-        console.error('PapaParse failed to load from CDN');
+        console.error('PapaParse failed to load');
       } else {
         console.log('PapaParse loaded successfully');
         window.Papa = Papa; // Ensure it's on window object
