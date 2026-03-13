@@ -79,25 +79,41 @@ export class DatabaseService {
   async runMigrations(): Promise<void> {
     const migrationsDir = path.join(__dirname, '../db/migrations');
     
+    console.log(`Looking for migrations in: ${migrationsDir}`);
+    console.log(`Current directory: ${__dirname}`);
+    console.log(`Process cwd: ${process.cwd()}`);
+    
     // Create migrations tracking table if it doesn't exist
-    await this.query(`
-      CREATE TABLE IF NOT EXISTS migrations (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL UNIQUE,
-        executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+    try {
+      await this.query(`
+        CREATE TABLE IF NOT EXISTS migrations (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255) NOT NULL UNIQUE,
+          executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      console.log('Migrations tracking table created/verified');
+    } catch (error) {
+      console.error('Failed to create migrations tracking table:', error);
+      throw error;
+    }
 
     // Check if migrations directory exists
     if (!fs.existsSync(migrationsDir)) {
-      console.log('No migrations directory found, skipping migrations');
-      return;
+      console.error(`ERROR: Migrations directory not found at: ${migrationsDir}`);
+      console.log('Directory contents of __dirname:', fs.readdirSync(__dirname));
+      console.log('Directory contents of process.cwd():', fs.readdirSync(process.cwd()));
+      throw new Error(`Migrations directory not found at ${migrationsDir}`);
     }
+    
+    console.log('Migrations directory found');
 
     // Get list of migration files (exclude rollback files)
     const files = fs.readdirSync(migrationsDir)
       .filter(f => f.endsWith('.sql') && !f.includes('.rollback.'))
       .sort();
+    
+    console.log(`Found ${files.length} migration files:`, files);
 
     for (const file of files) {
       // Check if migration has already been executed
@@ -108,17 +124,26 @@ export class DatabaseService {
 
       if (result.rows.length === 0) {
         console.log(`Running migration: ${file}`);
-        const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
+        const migrationPath = path.join(migrationsDir, file);
+        console.log(`Reading migration from: ${migrationPath}`);
+        const sql = fs.readFileSync(migrationPath, 'utf-8');
         
-        await this.transaction(async (client) => {
-          await client.query(sql);
-          await client.query(
-            'INSERT INTO migrations (name) VALUES ($1)',
-            [file]
-          );
-        });
+        try {
+          await this.transaction(async (client) => {
+            await client.query(sql);
+            await client.query(
+              'INSERT INTO migrations (name) VALUES ($1)',
+              [file]
+            );
+          });
 
-        console.log(`Migration completed: ${file}`);
+          console.log(`Migration completed: ${file}`);
+        } catch (error) {
+          console.error(`Migration failed: ${file}`, error);
+          throw error;
+        }
+      } else {
+        console.log(`Migration already executed: ${file}`);
       }
     }
 
