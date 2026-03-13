@@ -84,7 +84,11 @@ export class CSVUploader {
         console.log('Number of lines after cleaning:', cleanedText.split('\n').length);
 
         // Parse CSV with very lenient settings
-        const parseResult = window.Papa.parse(cleanedText, {
+        const Papa = window.Papa;
+        if (!Papa) {
+          throw new Error('PapaParse library not loaded');
+        }
+        const parseResult = Papa.parse(cleanedText, {
           header: true,
           skipEmptyLines: 'greedy',
           transformHeader: (header) => header.trim().replace(/^["']|["']$/g, ''),
@@ -190,7 +194,11 @@ export class CSVUploader {
       const text = await this.readFileAsText(file);
       
       // Parse CSV with auto-delimiter detection and lenient quote handling
-      const parseResult = window.Papa.parse(text, {
+      const Papa = window.Papa;
+      if (!Papa) {
+        throw new Error('PapaParse library not loaded');
+      }
+      const parseResult = Papa.parse(text, {
         header: true,
         skipEmptyLines: true,
         transformHeader: (header) => header.trim().replace(/^["']|["']$/g, ''), // Remove quotes from headers

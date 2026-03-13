@@ -337,7 +337,17 @@
     </div>
 
     <!-- Load PapaParse from CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" crossorigin="anonymous"></script>
+    
+    <!-- Verify PapaParse loaded -->
+    <script>
+      if (typeof Papa === 'undefined') {
+        console.error('PapaParse failed to load from CDN');
+      } else {
+        console.log('PapaParse loaded successfully');
+        window.Papa = Papa; // Ensure it's on window object
+      }
+    </script>
     
     <!-- Load application as ES6 module -->
     <script type="module" src="app.js?v=20260312b"></script>

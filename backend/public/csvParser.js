@@ -36,11 +36,17 @@ export async function parse(file) {
     }
 
     // Parse CSV using PapaParse (access from window object in module context)
-    if (typeof window.Papa === 'undefined') {
-      throw new Error('PapaParse library not loaded');
+    const Papa = window.Papa;
+    if (!Papa || typeof Papa.parse !== 'function') {
+      const error = 'PapaParse library not loaded. Please refresh the page.';
+      console.error('CSV Parser Error:', error);
+      return {
+        success: false,
+        error: error
+      };
     }
     
-    const parseResult = window.Papa.parse(text, {
+    const parseResult = Papa.parse(text, {
       skipEmptyLines: false, // Preserve empty lines for accurate row indexing
       delimiter: ',',
       newline: '',
