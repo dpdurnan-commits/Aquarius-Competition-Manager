@@ -77,7 +77,16 @@ export class DatabaseService {
   }
 
   async runMigrations(): Promise<void> {
-    const migrationsDir = path.join(__dirname, '../db/migrations');
+    // In production (Docker), migrations are in src/db/migrations relative to process.cwd()
+    // In development, migrations are relative to the compiled dist directory
+    let migrationsDir = path.join(__dirname, '../db/migrations');
+    
+    // Check if we're in production (compiled code in dist/)
+    if (!fs.existsSync(migrationsDir)) {
+      // Try production path (relative to process.cwd())
+      migrationsDir = path.join(process.cwd(), 'src/db/migrations');
+      console.log(`Development path not found, trying production path: ${migrationsDir}`);
+    }
     
     console.log(`Looking for migrations in: ${migrationsDir}`);
     console.log(`Current directory: ${__dirname}`);
