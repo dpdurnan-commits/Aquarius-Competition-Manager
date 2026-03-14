@@ -153,6 +153,10 @@ if (presentationNightButton) {
 
 // Initialize database and load existing summaries
 initializeApp();
+
+// Expose functions globally for use by other components
+window.showCompetitionSelectionModal = showCompetitionSelectionModal;
+window.closeCompetitionSelectionModal = closeCompetitionSelectionModal;
 /**
  * Initialize application
  */
