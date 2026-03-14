@@ -478,22 +478,21 @@ export class WeeklyDrillDownView {
         window.weeklyDrillDownOriginalRecords = originalEnhancedRecords;
         window.enhancedRecords = [...this.transactions];
         
+        // Register a callback so closeCompetitionSelectionModal can refresh this view
+        // after the flag operation completes (modal is async - returns before user acts)
+        window.weeklyDrillDownRefreshCallback = async () => {
+          await this.refresh();
+        };
+        
         console.log('WeeklyDrillDownView: Temporarily set enhancedRecords to local transactions:', window.enhancedRecords.length);
         console.log('WeeklyDrillDownView: Looking for recordId:', recordId);
         console.log('WeeklyDrillDownView: Available transaction IDs:', this.transactions.map(t => t.id));
         console.log('WeeklyDrillDownView: Record exists in local transactions:', !!this.transactions.find(t => t.id === recordId));
         
         await window.showCompetitionSelectionModal(recordId, mode);
-        console.log('WeeklyDrillDownView: Modal completed successfully');
+        // Note: modal returns immediately - refresh is triggered via weeklyDrillDownRefreshCallback
+        // when closeCompetitionSelectionModal is called after the flag operation
         
-        // Restore the original enhancedRecords
-        if (window.weeklyDrillDownOriginalRecords) {
-          window.enhancedRecords = window.weeklyDrillDownOriginalRecords;
-          delete window.weeklyDrillDownOriginalRecords;
-        }
-        
-        // Refresh the weekly drill-down view with updated data
-        await this.refresh();
       } catch (error) {
         console.error('WeeklyDrillDownView: Error in showCompetitionSelectionModal:', error);
         // Restore original enhancedRecords on error
@@ -501,6 +500,7 @@ export class WeeklyDrillDownView {
           window.enhancedRecords = window.weeklyDrillDownOriginalRecords;
           delete window.weeklyDrillDownOriginalRecords;
         }
+        delete window.weeklyDrillDownRefreshCallback;
         alert(`Error showing competition selection: ${error.message}`);
       }
     } else {

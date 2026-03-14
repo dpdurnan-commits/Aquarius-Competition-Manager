@@ -941,11 +941,19 @@ function closeCompetitionSelectionModal() {
         modal.remove();
     }
     
-    // Restore original enhancedRecords if it was temporarily modified by WeeklyDrillDownView
+    // Restore original enhancedRecords if temporarily modified by WeeklyDrillDownView
     if (window.weeklyDrillDownOriginalRecords) {
         console.log('Restoring original enhancedRecords after modal close');
         window.enhancedRecords = window.weeklyDrillDownOriginalRecords;
         delete window.weeklyDrillDownOriginalRecords;
+    }
+    
+    // Trigger WeeklyDrillDownView refresh if registered
+    if (typeof window.weeklyDrillDownRefreshCallback === 'function') {
+        console.log('Triggering WeeklyDrillDownView refresh after modal close');
+        const cb = window.weeklyDrillDownRefreshCallback;
+        delete window.weeklyDrillDownRefreshCallback;
+        cb();
     }
 }
 
