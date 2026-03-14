@@ -1,19 +1,7 @@
 /**
- * Weekly Drill-Down View Component
+ * Weekly Drill-Down View Component (Inline Only)
  * Displays all transactions for a selected weekly period with flagging controls
- */
-
-/**
- * @typedef {Object} EnhancedRecord
- * @property {number} [id] - Auto-incrementing primary key
- * @property {string} date - Transaction date
- * @property {string} time - Transaction time
- * @property {string} type - Transaction type
- * @property {string} member - Member field
- * @property {string} player - Player name
- * @property {string} total - Total value
- * @property {boolean} isWinning - True if flagged as winnings
- * @property {number|null} winningCompetitionId - Competition ID if flagged
+ * Modal functionality removed - only supports inline display
  */
 
 export class WeeklyDrillDownView {
@@ -30,44 +18,166 @@ export class WeeklyDrillDownView {
     this.transactionFlagger = transactionFlagger;
     this.transactionSummaryView = transactionSummaryView;
     
-    this.modal = document.getElementById('weekly-drilldown-modal');
-    this.heading = document.getElementById('drill-down-heading');
-    this.totalCountElement = document.getElementById('drill-down-total-count');
-    this.winningsTotalElement = document.getElementById('drill-down-winnings-total');
-    this.loadingElement = document.getElementById('drill-down-loading');
-    this.tableBody = document.getElementById('drill-down-body');
-    this.closeButton = document.getElementById('close-drill-down');
-    
+    // Only keep inline functionality
     this.currentWeekStart = null;
     this.currentWeekEnd = null;
     this.transactions = [];
     this.competitions = [];
-    
-    this._attachEventListeners();
   }
 
   /**
-   * Show the drill-down view for a specific week
+   * Show the drill-down view for a specific week (redirects to inline)
    * @param {Date} weekStart - Start date of the week
    * @param {Date} weekEnd - End date of the week
    * @returns {Promise<void>}
    */
   async show(weekStart, weekEnd) {
+    // Always use inline view
+    await this.showInline(weekStart, weekEnd);
+  }
+
+  /**
+   * Show the drill-down view inline in a container
+   * @param {Date} weekStart - Start date of the week
+   * @param {Date} weekEnd - End date of the week
+   * @param {string} containerId - ID of the container to render into
+   * @returns {Promise<void>}
+   */
+  async showInline(weekStart, weekEnd, containerId = 'weekly-transactions-container') {
     try {
+      console.log('WeeklyDrillDownView: Showing inline transactions for week', weekStart, 'to', weekEnd);
+      
       this.currentWeekStart = weekStart;
       this.currentWeekEnd = weekEnd;
       
-      // Update heading
-      this.heading.textContent = `Transactions for Week ${this.formatDate(weekStart)} to ${this.formatDate(weekEnd)}`;
+      // Find or create the container
+      let container = this._findOrCreateContainer(containerId);
       
-      // Show modal
-      this.modal.style.display = 'block';
+      if (!container) {
+        console.error('WeeklyDrillDownView: Could not find or create container');
+        return;
+      }
       
-      // Show loading state
-      this._showLoading();
+      // Show container and create content
+      container.style.display = 'block';
+      container.innerHTML = `
+        <div class="weekly-transactions-header">
+          <h3>Transactions for Week ${this.formatDate(weekStart)} to ${this.formatDate(weekEnd)}</h3>
+          <button id="close-weekly-transactions" class="close-button">×</button>
+        </div>
+        <div class="weekly-transactions-summary">
+          <div class="summary-item">
+            <span class="label">Total Transactions:</span>
+            <span id="weekly-total-count" class="value">0</span>
+          </div>
+          <div class="summary-item">
+            <span class="label">Flagged Winnings:</span>
+            <span id="weekly-winnings-total" class="value">£0.00</span>
+          </div>
+        </div>
+        <div id="weekly-loading" class="loading" style="display: block;">
+          <div class="spinner"></div>
+          <span>Loading transactions...</span>
+        </div>
+        <div class="weekly-transactions-table-wrapper">
+          <table id="weekly-transactions-table" class="weekly-transactions-table" style="display: none;">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Type</th>
+                <th>Member/Player</th>
+                <th>Total</th>
+                <th>Flag Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="weekly-transactions-body">
+            </tbody>
+          </table>
+        </div>
+      `;
       
+      // Add close button handler
+      const closeButton = document.getElementById('close-weekly-transactions');
+      if (closeButton) {
+        closeButton.addEventListener('click', () => this.hideInline(container.id));
+      }
+      
+      // Load and display transactions
+      await this._loadAndDisplayTransactions();
+      
+      // Scroll to the weekly transactions section
+      setTimeout(() => {
+        container.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start',
+          inline: 'nearest'
+        });
+      }, 100);
+      
+    } catch (error) {
+      console.error('WeeklyDrillDownView: Error showing inline drill-down:', error);
+      alert('Failed to load transactions. Please try again.');
+    }
+  }
+  /**
+   * Find or create the container for inline display
+   * @param {string} containerId - Preferred container ID
+   * @returns {HTMLElement|null} - Container element
+   * @private
+   */
+  _findOrCreateContainer(containerId) {
+    // Try to find existing container
+    let container = document.getElementById(containerId);
+    
+    if (container) {
+      return container;
+    }
+    
+    // Try alternative locations
+    const locations = [
+      'transaction-summary-section',
+      'competition-accounts-section', 
+      'data-viewer'
+    ];
+    
+    for (const locationId of locations) {
+      const location = document.getElementById(locationId);
+      if (location) {
+        container = document.createElement('div');
+        container.id = containerId;
+        container.className = 'weekly-transactions-container';
+        container.style.display = 'none';
+        location.appendChild(container);
+        console.log('WeeklyDrillDownView: Created container in', locationId);
+        return container;
+      }
+    }
+    
+    // Final fallback - create in body
+    const body = document.body;
+    if (body) {
+      container = document.createElement('div');
+      container.id = containerId;
+      container.className = 'weekly-transactions-container';
+      container.style.display = 'none';
+      body.appendChild(container);
+      console.log('WeeklyDrillDownView: Created container in body');
+      return container;
+    }
+    
+    return null;
+  }
+
+  /**
+   * Load and display transactions for the current week
+   * @private
+   */
+  async _loadAndDisplayTransactions() {
+    try {
       // Query transactions for the week from backend API
-      this.transactions = await this.databaseManager.getByDateRange(weekStart, weekEnd);
+      this.transactions = await this.databaseManager.getByDateRange(this.currentWeekStart, this.currentWeekEnd);
       
       // Get all competitions for enrichment
       this.competitions = await this.competitionManager.getAll();
@@ -76,29 +186,52 @@ export class WeeklyDrillDownView {
       const enrichedTransactions = this._enrichTransactions(this.transactions);
       
       // Hide loading state
-      this._hideLoading();
+      const loadingElement = document.getElementById('weekly-loading');
+      if (loadingElement) {
+        loadingElement.style.display = 'none';
+      }
+      
+      // Show table
+      const table = document.getElementById('weekly-transactions-table');
+      if (table) {
+        table.style.display = 'table';
+      }
       
       // Render transactions
-      this._renderTransactions(enrichedTransactions);
+      this._renderTransactionsInline(enrichedTransactions);
       
       // Update summary info
-      this._updateSummary(enrichedTransactions);
+      this._updateSummaryInline(enrichedTransactions);
       
     } catch (error) {
-      console.error('WeeklyDrillDownView: Error showing drill-down:', error);
-      this._hideLoading();
-      this._renderError('Failed to load transactions. Please try again.');
+      console.error('WeeklyDrillDownView: Error loading transactions:', error);
+      
+      // Hide loading and show error
+      const loadingElement = document.getElementById('weekly-loading');
+      if (loadingElement) {
+        loadingElement.innerHTML = '<p style="color: red;">Failed to load transactions. Please try again.</p>';
+      }
     }
+  }
+  /**
+   * Hide the inline drill-down view
+   * @param {string} containerId - ID of the container
+   */
+  hideInline(containerId = 'weekly-transactions-container') {
+    const container = document.getElementById(containerId);
+    if (container) {
+      container.style.display = 'none';
+      container.innerHTML = '';
+    }
+    this.currentWeekStart = null;
+    this.currentWeekEnd = null;
   }
 
   /**
-   * Hide the drill-down view
+   * Hide the drill-down view (redirects to hideInline)
    */
   hide() {
-    this.modal.style.display = 'none';
-    this.currentWeekStart = null;
-    this.currentWeekEnd = null;
-    this.transactions = [];
+    this.hideInline();
   }
 
   /**
@@ -107,7 +240,7 @@ export class WeeklyDrillDownView {
    */
   async refresh() {
     if (this.currentWeekStart && this.currentWeekEnd) {
-      await this.show(this.currentWeekStart, this.currentWeekEnd);
+      await this.showInline(this.currentWeekStart, this.currentWeekEnd);
       
       // Call the callback if it exists to refresh the main view
       if (this.onTransactionUpdated) {
@@ -118,8 +251,8 @@ export class WeeklyDrillDownView {
 
   /**
    * Enrich transactions with competition names
-   * @param {EnhancedRecord[]} transactions - Array of transactions
-   * @returns {EnhancedRecord[]} - Enriched transactions
+   * @param {Array} transactions - Array of transactions
+   * @returns {Array} - Enriched transactions
    * @private
    */
   _enrichTransactions(transactions) {
@@ -136,276 +269,161 @@ export class WeeklyDrillDownView {
   }
 
   /**
-   * Render transactions in the table
-   * @param {EnhancedRecord[]} transactions - Array of enriched transactions
+   * Render transactions in inline table
+   * @param {Array} transactions - Array of enriched transactions
    * @private
    */
-  _renderTransactions(transactions) {
-    this.tableBody.innerHTML = '';
-    
+  _renderTransactionsInline(transactions) {
+    const tbody = document.getElementById('weekly-transactions-body');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
     if (transactions.length === 0) {
-      this._renderEmptyState();
+      const row = document.createElement('tr');
+      row.innerHTML = '<td colspan="7" class="empty-message">No transactions found for this week</td>';
+      tbody.appendChild(row);
       return;
     }
-    
+
     transactions.forEach(transaction => {
       const row = this._createTransactionRow(transaction);
-      this.tableBody.appendChild(row);
+      tbody.appendChild(row);
     });
-  }
 
+    // Attach event listeners to action buttons
+    this._attachInlineActionListeners();
+  }
   /**
    * Create a table row for a transaction
-   * @param {EnhancedRecord} transaction - Transaction record
+   * @param {Object} transaction - Transaction record
    * @returns {HTMLTableRowElement} - Table row element
    * @private
    */
   _createTransactionRow(transaction) {
     const row = document.createElement('tr');
-    row.className = transaction.isWinning ? 'flagged-row' : '';
     row.dataset.recordId = transaction.id;
-    
+
+    // Add flagged class if transaction is flagged
+    if (transaction.isWinning) {
+      row.classList.add('flagged-row');
+    }
+
     // Date
     const dateCell = document.createElement('td');
-    dateCell.textContent = transaction.date;
+    dateCell.textContent = this.formatDate(transaction.date);
     row.appendChild(dateCell);
-    
+
     // Time
     const timeCell = document.createElement('td');
-    timeCell.textContent = transaction.time;
+    timeCell.textContent = transaction.time || '';
     row.appendChild(timeCell);
-    
+
     // Type
     const typeCell = document.createElement('td');
-    typeCell.textContent = transaction.type;
+    typeCell.textContent = transaction.type || '';
     row.appendChild(typeCell);
-    
+
     // Member/Player
     const memberCell = document.createElement('td');
-    memberCell.textContent = transaction.player || transaction.member || '';
+    memberCell.textContent = transaction.member || transaction.player || '';
     row.appendChild(memberCell);
-    
+
     // Total
     const totalCell = document.createElement('td');
-    totalCell.className = 'monetary';
     totalCell.textContent = this.formatCurrency(transaction.total);
     row.appendChild(totalCell);
-    
+
     // Flag Status
-    const flagStatusCell = document.createElement('td');
+    const flagCell = document.createElement('td');
     if (transaction.isWinning) {
-      const flagIcon = document.createElement('span');
-      flagIcon.className = 'flag-icon';
-      flagIcon.textContent = '🏆';
-      flagIcon.setAttribute('aria-label', 'Flagged as winnings');
-      flagStatusCell.appendChild(flagIcon);
-      
-      if (transaction.winningCompetitionName) {
-        const badge = document.createElement('span');
-        badge.className = 'competition-badge';
-        badge.textContent = transaction.winningCompetitionName;
-        flagStatusCell.appendChild(document.createTextNode(' '));
-        flagStatusCell.appendChild(badge);
-      }
+      flagCell.innerHTML = `<span class="flag-indicator">🏆 Flagged</span>`;
+    } else {
+      flagCell.textContent = 'Not Flagged';
     }
-    row.appendChild(flagStatusCell);
-    
+    row.appendChild(flagCell);
+
     // Actions
     const actionsCell = document.createElement('td');
     
+    // Only show flag controls for transactions that can be flagged
     if (this.transactionFlagger.canFlag(transaction)) {
       if (transaction.isWinning) {
-        const editButton = document.createElement('button');
-        editButton.className = 'edit-flag-btn';
-        editButton.textContent = 'Edit Flag';
-        editButton.dataset.recordId = transaction.id;
-        editButton.setAttribute('aria-label', `Edit flag for transaction ${transaction.id}`);
-        actionsCell.appendChild(editButton);
+        actionsCell.innerHTML = `
+          <div class="flagged-indicator">
+            <span class="flag-icon" aria-hidden="true">🏆</span>
+            <span class="competition-badge">${transaction.winningCompetitionName || 'Unknown Competition'}</span>
+            <button class="edit-flag-btn" data-record-id="${transaction.id}" aria-label="Edit flag">Edit</button>
+          </div>
+        `;
       } else {
-        const flagButton = document.createElement('button');
-        flagButton.className = 'flag-btn';
-        flagButton.textContent = 'Flag as Winnings';
-        flagButton.dataset.recordId = transaction.id;
-        flagButton.setAttribute('aria-label', `Flag transaction ${transaction.id} as winnings`);
-        actionsCell.appendChild(flagButton);
+        actionsCell.innerHTML = `
+          <button class="flag-btn" data-record-id="${transaction.id}" aria-label="Flag as winnings">
+            <span class="flag-icon" aria-hidden="true">🏳️</span> Flag as Winnings
+          </button>
+        `;
       }
+    } else {
+      actionsCell.innerHTML = '<span class="not-flaggable">Not Flaggable</span>';
     }
     row.appendChild(actionsCell);
-    
+
     return row;
   }
-
   /**
-   * Render empty state message
+   * Update summary info for inline view
+   * @param {Array} transactions - Array of enriched transactions
    * @private
    */
-  _renderEmptyState() {
-    const row = document.createElement('tr');
-    const cell = document.createElement('td');
-    cell.colSpan = 7;
-    cell.className = 'empty-state';
-    cell.textContent = 'No transactions found for this week.';
-    row.appendChild(cell);
-    this.tableBody.appendChild(row);
+  _updateSummaryInline(transactions) {
+    const totalCountElement = document.getElementById('weekly-total-count');
+    const winningsTotalElement = document.getElementById('weekly-winnings-total');
+
+    if (totalCountElement) {
+      totalCountElement.textContent = transactions.length.toString();
+    }
+
+    if (winningsTotalElement) {
+      const winningsTotal = transactions
+        .filter(t => t.isWinning)
+        .reduce((sum, t) => sum + parseFloat(t.total || 0), 0);
+      winningsTotalElement.textContent = this.formatCurrency(winningsTotal);
+    }
   }
 
   /**
-   * Render error message
-   * @param {string} message - Error message
+   * Attach event listeners to inline action buttons
    * @private
    */
-  _renderError(message) {
-    this.tableBody.innerHTML = '';
-    const row = document.createElement('tr');
-    const cell = document.createElement('td');
-    cell.colSpan = 7;
-    cell.className = 'error-state';
-    cell.style.color = '#d32f2f';
-    cell.style.padding = '20px';
-    cell.style.textAlign = 'center';
-    cell.textContent = message;
-    row.appendChild(cell);
-    this.tableBody.appendChild(row);
-  }
-
-  /**
-   * Update summary information
-   * @param {EnhancedRecord[]} transactions - Array of transactions
-   * @private
-   */
-  _updateSummary(transactions) {
-    // Total count
-    this.totalCountElement.textContent = transactions.length;
-    
-    // Calculate flagged winnings total
-    const winningsTotal = transactions
-      .filter(t => t.isWinning)
-      .reduce((sum, t) => sum + parseFloat(t.total || 0), 0);
-    
-    this.winningsTotalElement.textContent = this.formatCurrency(winningsTotal);
-  }
-
-  /**
-   * Show loading state
-   * @private
-   */
-  _showLoading() {
-    this.loadingElement.style.display = 'flex';
-    this.tableBody.innerHTML = '';
-  }
-
-  /**
-   * Hide loading state
-   * @private
-   */
-  _hideLoading() {
-    this.loadingElement.style.display = 'none';
-  }
-
-  /**
-   * Attach event listeners
-   * @private
-   */
-  _attachEventListeners() {
-    // Close button
-    this.closeButton.addEventListener('click', () => {
-      this.hide();
+  _attachInlineActionListeners() {
+    // Flag buttons
+    const flagButtons = document.querySelectorAll('#weekly-transactions-table .flag-btn');
+    flagButtons.forEach(button => {
+      button.addEventListener('click', (e) => {
+        const recordId = parseInt(e.target.closest('.flag-btn').dataset.recordId, 10);
+        this._handleFlagTransaction(recordId);
+      });
     });
-    
-    // Close on overlay click
-    const overlay = this.modal.querySelector('.modal-overlay');
-    overlay.addEventListener('click', () => {
-      this.hide();
-    });
-    
-    // Close on Escape key
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && this.modal.style.display === 'block') {
-        this.hide();
-      }
-    });
-    
-    // Keyboard navigation for table rows
-    this.tableBody.addEventListener('keydown', (e) => {
-      const currentRow = e.target.closest('tr');
-      if (!currentRow) return;
-      
-      let targetRow = null;
-      
-      // Arrow key navigation
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        targetRow = currentRow.nextElementSibling;
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        targetRow = currentRow.previousElementSibling;
-      } else if (e.key === 'Home') {
-        e.preventDefault();
-        targetRow = this.tableBody.firstElementChild;
-      } else if (e.key === 'End') {
-        e.preventDefault();
-        targetRow = this.tableBody.lastElementChild;
-      }
-      
-      // Focus the target row if found
-      if (targetRow) {
-        const focusableButton = targetRow.querySelector('.flag-btn, .edit-flag-btn');
-        if (focusableButton) {
-          focusableButton.focus();
-        }
-      }
-    });
-    
-    // Delegate flag button clicks
-    this.tableBody.addEventListener('click', async (e) => {
-      const flagBtn = e.target.closest('.flag-btn');
-      const editBtn = e.target.closest('.edit-flag-btn');
-      
-      if (flagBtn) {
-        await this._handleFlagClick(flagBtn);
-      } else if (editBtn) {
-        await this._handleEditFlagClick(editBtn);
-      }
+
+    // Edit flag buttons
+    const editButtons = document.querySelectorAll('#weekly-transactions-table .edit-flag-btn');
+    editButtons.forEach(button => {
+      button.addEventListener('click', (e) => {
+        const recordId = parseInt(e.target.dataset.recordId, 10);
+        this._handleEditFlag(recordId);
+      });
     });
   }
 
   /**
-   * Handle flag button click
-   * @param {HTMLElement} button - Flag button element
-   * @returns {Promise<void>}
+   * Handle flag transaction action (uses the same modal as main app)
+   * @param {number} recordId - Transaction record ID
    * @private
    */
-  async _handleFlagClick(button) {
-    const recordId = parseInt(button.dataset.recordId, 10);
-    
+  async _handleFlagTransaction(recordId) {
     try {
-      // Show competition selection (this would be implemented in a separate UI component)
-      // For now, we'll just show an alert
-      const competitions = await this.competitionManager.getAll();
-      
-      if (competitions.length === 0) {
-        alert('No competitions available. Please create a competition first.');
-        return;
-      }
-      
-      // Simple selection for now - in production, this would be a modal
-      const competitionNames = competitions.map((c, i) => `${i + 1}. ${c.name}`).join('\n');
-      const selection = prompt(`Select a competition:\n${competitionNames}\n\nEnter the number:`);
-      
-      if (selection) {
-        const index = parseInt(selection, 10) - 1;
-        if (index >= 0 && index < competitions.length) {
-          const competition = competitions[index];
-          await this.transactionFlagger.flagTransaction(recordId, competition.id);
-          
-          // Refresh the drill-down view
-          await this.refresh();
-          
-          // Refresh the transaction summary view
-          // This will be implemented when the summary view is updated
-          console.log('Transaction flagged successfully');
-        }
-      }
+      // Use the same competition selection modal as the main app
+      await this._showCompetitionSelectionModal(recordId, 'flag');
     } catch (error) {
       console.error('WeeklyDrillDownView: Error flagging transaction:', error);
       alert(`Failed to flag transaction: ${error.message}`);
@@ -413,57 +431,97 @@ export class WeeklyDrillDownView {
   }
 
   /**
-   * Handle edit flag button click
-   * @param {HTMLElement} button - Edit flag button element
-   * @returns {Promise<void>}
+   * Handle edit flag action (uses the same modal as main app)
+   * @param {number} recordId - Transaction record ID
    * @private
    */
-  async _handleEditFlagClick(button) {
-    const recordId = parseInt(button.dataset.recordId, 10);
-    
+  async _handleEditFlag(recordId) {
     try {
-      const transaction = this.transactions.find(t => t.id === recordId);
-      if (!transaction) {
-        throw new Error('Transaction not found');
-      }
-      
-      const competitions = await this.competitionManager.getAll();
-      
-      // Simple selection for now - in production, this would be a modal
-      const competitionNames = competitions.map((c, i) => `${i + 1}. ${c.name}`).join('\n');
-      const action = prompt(
-        `Current competition: ${transaction.winningCompetitionName}\n\n` +
-        `Options:\n` +
-        `0. Remove flag\n` +
-        `${competitionNames}\n\n` +
-        `Enter the number:`
-      );
-      
-      if (action !== null) {
-        const index = parseInt(action, 10);
-        
-        if (index === 0) {
-          // Remove flag
-          await this.transactionFlagger.unflagTransaction(recordId);
-        } else if (index > 0 && index <= competitions.length) {
-          // Update competition
-          const competition = competitions[index - 1];
-          await this.transactionFlagger.updateFlag(recordId, competition.id);
-        } else {
-          return; // Invalid selection
-        }
-        
-        // Refresh the drill-down view
-        await this.refresh();
-        
-        console.log('Transaction flag updated successfully');
-      }
+      // Use the same competition selection modal as the main app
+      await this._showCompetitionSelectionModal(recordId, 'edit');
     } catch (error) {
       console.error('WeeklyDrillDownView: Error editing flag:', error);
       alert(`Failed to edit flag: ${error.message}`);
     }
   }
+  /**
+   * Show competition selection modal (reuses main app modal functionality)
+   * @param {number} recordId - Transaction record ID
+   * @param {string} mode - 'flag' or 'edit'
+   * @private
+   */
+  async _showCompetitionSelectionModal(recordId, mode) {
+    // Get the global showCompetitionSelectionModal function from main app
+    if (typeof window.showCompetitionSelectionModal === 'function') {
+      await window.showCompetitionSelectionModal(recordId, mode);
+      // Refresh after modal closes
+      await this.refresh();
+    } else {
+      // Fallback to simple prompt-based selection
+      await this._showSimpleCompetitionSelection(recordId, mode);
+    }
+  }
 
+  /**
+   * Simple competition selection fallback
+   * @param {number} recordId - Transaction record ID
+   * @param {string} mode - 'flag' or 'edit'
+   * @private
+   */
+  async _showSimpleCompetitionSelection(recordId, mode) {
+    try {
+      const record = this.transactions.find(r => r.id === recordId);
+      if (!record) {
+        alert('Transaction not found');
+        return;
+      }
+      
+      const competitions = await this.competitionManager.getAll({ finished: false });
+      
+      if (competitions.length === 0) {
+        alert('No active competitions available. Please create a competition first.');
+        return;
+      }
+      
+      const competitionNames = competitions.map((c, i) => `${i + 1}. ${c.name}`).join('\n');
+      let selection;
+      
+      if (mode === 'edit') {
+        selection = prompt(
+          `Current competition: ${record.winningCompetitionName || 'None'}\n\n` +
+          `Options:\n0. Remove flag\n${competitionNames}\n\nEnter number:`
+        );
+        
+        if (selection !== null) {
+          const index = parseInt(selection, 10);
+          if (index === 0) {
+            await this.transactionFlagger.unflagTransaction(recordId);
+          } else if (index > 0 && index <= competitions.length) {
+            const competition = competitions[index - 1];
+            await this.transactionFlagger.updateFlag(recordId, competition.id);
+          }
+        }
+      } else {
+        selection = prompt(`Select competition:\n${competitionNames}\n\nEnter number:`);
+        
+        if (selection) {
+          const index = parseInt(selection, 10) - 1;
+          if (index >= 0 && index < competitions.length) {
+            const competition = competitions[index];
+            await this.transactionFlagger.flagTransaction(recordId, competition.id);
+          }
+        }
+      }
+      
+      if (selection !== null) {
+        await this.refresh();
+      }
+      
+    } catch (error) {
+      console.error('WeeklyDrillDownView: Error in simple competition selection:', error);
+      alert(`Failed to ${mode} transaction: ${error.message}`);
+    }
+  }
   /**
    * Format a monetary value with currency symbol
    * @param {number|string} value - Monetary value

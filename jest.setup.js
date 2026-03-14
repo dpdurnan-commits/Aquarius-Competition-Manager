@@ -4,6 +4,11 @@
  */
 
 import 'fake-indexeddb/auto';
+import { TextEncoder, TextDecoder } from 'util';
+
+// Polyfill for TextEncoder/TextDecoder (required by jsdom)
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
 
 // Polyfill for structuredClone (required by fake-indexeddb)
 if (typeof global.structuredClone === 'undefined') {

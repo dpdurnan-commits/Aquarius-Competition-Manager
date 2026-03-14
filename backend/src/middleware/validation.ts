@@ -124,12 +124,12 @@ export function validateCompetitionCreate(req: Request, res: Response, next: Nex
  * Validates seasonId if provided (positive integer)
  */
 export function validateCompetitionUpdate(req: Request, res: Response, next: NextFunction): void {
-  const { name, date, type, seasonId, description, prizeStructure } = req.body;
+  const { name, date, type, seasonId, description, prizeStructure, finished } = req.body;
   const errors: string[] = [];
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
   // At least one field must be provided
-  if (name === undefined && date === undefined && type === undefined && seasonId === undefined && description === undefined && prizeStructure === undefined) {
+  if (name === undefined && date === undefined && type === undefined && seasonId === undefined && description === undefined && prizeStructure === undefined && finished === undefined) {
     errors.push('At least one field must be provided for update');
   }
 
@@ -157,6 +157,11 @@ export function validateCompetitionUpdate(req: Request, res: Response, next: Nex
     if (typeof seasonId !== 'number' || !Number.isInteger(seasonId) || seasonId <= 0) {
       errors.push('seasonId must be a positive integer');
     }
+  }
+
+  // Validate finished if provided
+  if (finished !== undefined && typeof finished !== 'boolean') {
+    errors.push('finished must be a boolean value');
   }
 
   if (errors.length > 0) {

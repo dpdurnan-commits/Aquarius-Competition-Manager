@@ -71,15 +71,15 @@ export class CompetitionList {
    */
   async loadCompetitions(seasonId = null) {
     try {
-      const endpoint = seasonId 
-        ? `/api/competitions?seasonId=${seasonId}`
-        : '/api/competitions';
+      // Always filter to show only unfinished competitions for the selector
+      const options = { finished: false };
+      if (seasonId) {
+        options.seasonId = seasonId;
+      }
       
-      const result = await this.apiClient.request(endpoint, {
-        method: 'GET'
-      });
+      const competitions = await this.apiClient.getAllCompetitions(options);
 
-      this.competitions = result.competitions || [];
+      this.competitions = competitions || [];
       
       // Apply current filter if set
       if (this.currentSeasonFilter) {
@@ -273,7 +273,7 @@ export class CompetitionList {
       // Empty state
       const emptyState = document.createElement('div');
       emptyState.className = 'empty-state';
-      emptyState.textContent = 'No competitions found';
+      emptyState.textContent = 'No active competitions found';
       this.competitionListEl.appendChild(emptyState);
     } else {
       // Render competition items

@@ -246,4 +246,279 @@ describe('CompetitionService', () => {
       expect(flaggedAfter.rows).toHaveLength(0);
     });
   });
+
+  describe('finished status support', () => {
+    describe('createCompetition', () => {
+      it('should include finished status in response (defaults to false)', async () => {
+        const dto: CreateCompetitionDTO = {
+          name: 'Test Competition',
+          date: '2024-06-01',
+          type: 'singles',
+          seasonId: testSeasonId
+        };
+
+        const competition = await competitionService.createCompetition(dto);
+
+        expect(competition.finished).toBeDefined();
+        expect(competition.finished).toBe(false);
+      });
+    });
+
+    describe('getCompetitionById', () => {
+      it('should include finished status in response', async () => {
+        const created = await competitionService.createCompetition({
+          name: 'Test Competition',
+          date: '2024-06-01',
+          type: 'singles',
+          seasonId: testSeasonId
+        });
+
+        const found = await competitionService.getCompetitionById(created.id);
+
+        expect(found).not.toBeNull();
+        expect(found!.finished).toBeDefined();
+        expect(found!.finished).toBe(false);
+      });
+    });
+
+    describe('getAllCompetitions', () => {
+      it('should include finished status for all competitions', async () => {
+        await competitionService.createCompetition({
+          name: 'Comp A',
+          date: '2024-01-15',
+          type: 'singles',
+          seasonId: testSeasonId
+        });
+
+        const competitions = await competitionService.getAllCompetitions();
+
+        expect(competitions).toHaveLength(1);
+        expect(competitions[0].finished).toBeDefined();
+        expect(competitions[0].finished).toBe(false);
+      });
+
+      it('should filter by finished=false to return only unfinished competitions', async () => {
+        const comp1 = await competitionService.createCompetition({
+          name: 'Active Comp',
+          date: '2024-01-15',
+          type: 'singles',
+          seasonId: testSeasonId
+        });
+
+        const comp2 = await competitionService.createCompetition({
+          name: 'Finished Comp',
+          date: '2024-02-15',
+          type: 'singles',
+          seasonId: testSeasonId
+        });
+
+        // Mark comp2 as finished
+        await competitionService.updateCompetition(comp2.id, { finished: true });
+
+        const unfinished = await competitionService.getAllCompetitions({ finished: false });
+
+        expect(unfinished).toHaveLength(1);
+        expect(unfinished[0].id).toBe(comp1.id);
+        expect(unfinished[0].finished).toBe(false);
+      });
+
+      it('should filter by finished=true to return only finished competitions', async () => {
+        await competitionService.createCompetition({
+          name: 'Active Comp',
+          date: '2024-01-15',
+          type: 'singles',
+          seasonId: testSeasonId
+        });
+
+        const comp2 = await competitionService.createCompetition({
+          name: 'Finished Comp',
+          date: '2024-02-15',
+          type: 'singles',
+          seasonId: testSeasonId
+        });
+
+        // Mark comp2 as finished
+        await competitionService.updateCompetition(comp2.id, { finished: true });
+
+        const finished = await competitionService.getAllCompetitions({ finished: true });
+
+        expect(finished).toHaveLength(1);
+        expect(finished[0].id).toBe(comp2.id);
+        expect(finished[0].finished).toBe(true);
+      });
+
+      it('should return all competitions when finished filter is omitted', async () => {
+        await competitionService.createCompetition({
+          name: 'Active Comp',
+          date: '2024-01-15',
+          type: 'singles',
+          seasonId: testSeasonId
+        });
+
+        const comp2 = await competitionService.createCompetition({
+          name: 'Finished Comp',
+          date: '2024-02-15',
+          type: 'singles',
+          seasonId: testSeasonId
+        });
+
+        // Mark comp2 as finished
+        await competitionService.updateCompetition(comp2.id, { finished: true });
+
+        const all = await competitionService.getAllCompetitions();
+
+        expect(all).toHaveLength(2);
+      });
+
+      it('should combine seasonId and finished filters', async () => {
+        // Create another season
+        const season2 = await seasonService.createSeason({
+          name: 'Season: Winter 25-Summer 26',
+          startYear: 25,
+          endYear: 26
+        });
+
+        const comp1 = await competitionService.createCompetition({
+          name: 'Season 1 Active',
+          date: '2024-01-15',
+          type: 'singles',
+          seasonId: testSeasonId
+        });
+
+        const comp2 = await competitionService.createCompetition({
+          name: 'Season 1 Finished',
+          date: '2024-02-15',
+          type: 'singles',
+          seasonId: testSeasonId
+        });
+
+        await competitionService.createCompetition({
+          name: 'Season 2 Active',
+          date: '2024-03-15',
+          type: 'singles',
+          seasonId: season2.id
+        });
+
+        // Mark comp2 as finished
+        await competitionService.updateCompetition(comp2.id, { finished: true });
+
+        const filtered = await competitionService.getAllCompetitions({
+          seasonId: testSeasonId,
+          finished: false
+        });
+
+        expect(filtered).toHaveLength(1);
+        expect(filtered[0].id).toBe(comp1.id);
+      });
+    });
+
+    describe('updateCompetition', () => {
+      it('should update finished status to true', async () => {
+        const created = await competitionService.createCompetition({
+          name: 'Test Competition',
+          date: '2024-05-01',
+          type: 'singles',
+          seasonId: testSeasonId
+        });
+
+        const updated = await competitionService.updateCompetition(created.id, { finished: true });
+
+        expect(updated.finished).toBe(true);
+      });
+
+      it('should update finished status to false', async () => {
+        const created = await competitionService.createCompetition({
+          name: 'Test Competition',
+          date: '2024-05-01',
+          type: 'singles',
+          seasonId: testSeasonId
+        });
+
+        // Mark as finished first
+        await competitionService.updateCompetition(created.id, { finished: true });
+
+        // Then unmark
+        const updated = await competitionService.updateCompetition(created.id, { finished: false });
+
+        expect(updated.finished).toBe(false);
+      });
+
+      it('should throw error when finished is not a boolean', async () => {
+        const created = await competitionService.createCompetition({
+          name: 'Test Competition',
+          date: '2024-05-01',
+          type: 'singles',
+          seasonId: testSeasonId
+        });
+
+        await expect(
+          competitionService.updateCompetition(created.id, { finished: 'true' as any })
+        ).rejects.toThrow('Finished status must be a boolean value');
+      });
+
+      it('should update finished status along with other fields', async () => {
+        const created = await competitionService.createCompetition({
+          name: 'Old Name',
+          date: '2024-05-01',
+          type: 'singles',
+          seasonId: testSeasonId
+        });
+
+        const updated = await competitionService.updateCompetition(created.id, {
+          name: 'New Name',
+          finished: true
+        });
+
+        expect(updated.name).toBe('New Name');
+        expect(updated.finished).toBe(true);
+      });
+
+      it('should preserve associations when marking competition as finished', async () => {
+        // Create competition
+        const competition = await competitionService.createCompetition({
+          name: 'Test Competition',
+          date: '2024-05-01',
+          type: 'singles',
+          seasonId: testSeasonId
+        });
+
+        // Create a transaction
+        await dbService.query(
+          `INSERT INTO transactions 
+           (date, time, till, type, member, player, competition, price, discount, 
+            subtotal, vat, total, source_row_index, is_complete)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+          ['2024-05-01', '10:00:00', 'Till 1', 'Sale', 'Member A', 'Player A', 'Comp A',
+           '10.00', '0.00', '10.00', '2.00', '12.00', 1, true]
+        );
+
+        const txResult = await dbService.query('SELECT id FROM transactions LIMIT 1');
+        const transactionId = txResult.rows[0].id;
+
+        // Create flagged transaction association
+        await dbService.query(
+          'INSERT INTO flagged_transactions (transaction_id, competition_id) VALUES ($1, $2)',
+          [transactionId, competition.id]
+        );
+
+        // Count associations before marking finished
+        const beforeCount = await dbService.query(
+          'SELECT COUNT(*) as count FROM flagged_transactions WHERE competition_id = $1',
+          [competition.id]
+        );
+
+        // Mark as finished
+        await competitionService.updateCompetition(competition.id, { finished: true });
+
+        // Count associations after marking finished
+        const afterCount = await dbService.query(
+          'SELECT COUNT(*) as count FROM flagged_transactions WHERE competition_id = $1',
+          [competition.id]
+        );
+
+        expect(beforeCount.rows[0].count).toBe('1');
+        expect(afterCount.rows[0].count).toBe('1');
+      });
+    });
+  });
 });

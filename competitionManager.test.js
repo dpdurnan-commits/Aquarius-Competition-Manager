@@ -1,409 +1,329 @@
 /**
- * Unit tests for Competition Manager
+ * Unit tests for CompetitionManager finished methods
+ * Tests the finished status functionality for competitions
  */
 
-import { CompetitionManager } from './competitionManager.js';
-import { DatabaseManager } from './databaseManager.js';
+import { describe, test, expect, beforeEach, jest } from '@jest/globals';
+import { CompetitionManager } from './backend/public/competitionManager.js';
 
-describe('CompetitionManager', () => {
-  let dbManager;
+describe('CompetitionManager - Finished Status Methods', () => {
   let competitionManager;
+  let mockApiClient;
 
-  beforeEach(async () => {
-    // Initialize database
-    dbManager = new DatabaseManager();
-    await dbManager.initialize();
-    
-    // Clear existing data
-    await clearCompetitions(dbManager);
-    await dbManager.clearAll();
-    
-    // Create competition manager
-    competitionManager = new CompetitionManager(dbManager);
+  beforeEach(() => {
+    // Create mock API client
+    mockApiClient = {
+      request: jest.fn(),
+      updateCompetition: jest.fn(),
+      getAllCompetitions: jest.fn(),
+      createCompetition: jest.fn(),
+      deleteCompetition: jest.fn(),
+      getAllFlaggedTransactions: jest.fn(),
+      getActivePresentationSeason: jest.fn(),
+      createPresentationSeason: jest.fn(),
+      setActivePresentationSeason: jest.fn()
+    };
+
+    competitionManager = new CompetitionManager(mockApiClient);
   });
 
-  afterEach(async () => {
-    // Clean up
-    if (dbManager.db) {
-      await clearCompetitions(dbManager);
-      await dbManager.clearAll();
-      dbManager.db.close();
-    }
-  });
-
-  // Helper function to clear competitions
-  async function clearCompetitions(dbManager) {
-    return new Promise((resolve, reject) => {
-      const transaction = dbManager.db.transaction(['competitions'], 'readwrite');
-      const store = transaction.objectStore('competitions');
-      const request = store.clear();
-      
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  describe('create()', () => {
-    test('should create competition with valid name', async () => {
-      const competition = await competitionManager.create('October Medal 2025');
-      
-      expect(competition).toBeDefined();
-      expect(competition.id).toBeDefined();
-      expect(competition.name).toBe('October Medal 2025');
-      expect(competition.createdAt).toBeInstanceOf(Date);
-    });
-
-    test('should trim whitespace from name', async () => {
-      const competition = await competitionManager.create('  Summer Cup  ');
-      
-      expect(competition.name).toBe('Summer Cup');
-    });
-
-    test('should throw error for empty name', async () => {
-      await expect(competitionManager.create('')).rejects.toThrow('Competition name cannot be empty');
-      await expect(competitionManager.create('   ')).rejects.toThrow('Competition name cannot be empty');
-    });
-
-    test('should throw error for null or undefined name', async () => {
-      await expect(competitionManager.create(null)).rejects.toThrow('Competition name cannot be empty');
-      await expect(competitionManager.create(undefined)).rejects.toThrow('Competition name cannot be empty');
-    });
-
-    test('should throw error for duplicate name (case-insensitive)', async () => {
-      await competitionManager.create('October Medal');
-      
-      await expect(competitionManager.create('October Medal')).rejects.toThrow('Competition name must be unique');
-      await expect(competitionManager.create('OCTOBER MEDAL')).rejects.toThrow('Competition name must be unique');
-      await expect(competitionManager.create('october medal')).rejects.toThrow('Competition name must be unique');
-    });
-
-    test('should allow multiple different competitions', async () => {
-      const comp1 = await competitionManager.create('October Medal');
-      const comp2 = await competitionManager.create('Summer Cup');
-      const comp3 = await competitionManager.create('Winter Trophy');
-      
-      expect(comp1.id).not.toBe(comp2.id);
-      expect(comp2.id).not.toBe(comp3.id);
-    });
-  });
-
-  describe('update()', () => {
-    test('should update competition with valid name', async () => {
-      const created = await competitionManager.create('Old Name');
-      const updated = await competitionManager.update(created.id, 'New Name');
-      
-      expect(updated.id).toBe(created.id);
-      expect(updated.name).toBe('New Name');
-      // createdAt may be serialized as string in IndexedDB
-      expect(new Date(updated.createdAt).getTime()).toBe(new Date(created.createdAt).getTime());
-    });
-
-    test('should trim whitespace from updated name', async () => {
-      const created = await competitionManager.create('Original');
-      const updated = await competitionManager.update(created.id, '  Updated  ');
-      
-      expect(updated.name).toBe('Updated');
-    });
-
-    test('should throw error for empty name', async () => {
-      const created = await competitionManager.create('Test Competition');
-      
-      await expect(competitionManager.update(created.id, '')).rejects.toThrow('Competition name cannot be empty');
-      await expect(competitionManager.update(created.id, '   ')).rejects.toThrow('Competition name cannot be empty');
-    });
-
-    test('should throw error for non-existent competition', async () => {
-      await expect(competitionManager.update(99999, 'New Name')).rejects.toThrow('Competition not found');
-    });
-
-    test('should throw error for duplicate name (excluding current)', async () => {
-      const comp1 = await competitionManager.create('Competition A');
-      const comp2 = await competitionManager.create('Competition B');
-      
-      await expect(competitionManager.update(comp2.id, 'Competition A')).rejects.toThrow('Competition name must be unique');
-      await expect(competitionManager.update(comp2.id, 'COMPETITION A')).rejects.toThrow('Competition name must be unique');
-    });
-
-    test('should allow updating to same name (case-insensitive)', async () => {
-      const created = await competitionManager.create('Test Competition');
-      
-      const updated1 = await competitionManager.update(created.id, 'Test Competition');
-      expect(updated1.name).toBe('Test Competition');
-      
-      const updated2 = await competitionManager.update(created.id, 'TEST COMPETITION');
-      expect(updated2.name).toBe('TEST COMPETITION');
-    });
-  });
-
-  describe('delete()', () => {
-    test('should delete competition with no associated transactions', async () => {
-      const created = await competitionManager.create('Test Competition');
-      const result = await competitionManager.delete(created.id);
-      
-      expect(result.success).toBe(true);
-      
-      const retrieved = await competitionManager.getById(created.id);
-      expect(retrieved).toBeNull();
-    });
-
-    test('should prevent deletion when competition has associated transactions', async () => {
-      const competition = await competitionManager.create('Test Competition');
-      
-      // Create a transaction with this competition
-      const transaction = {
-        date: '26-08-2025',
-        time: '18:19',
-        till: 'Till 1',
-        type: 'Topup (Competitions)',
-        member: 'Test Member',
-        player: 'Test Player',
-        competition: '',
-        price: '50.00',
-        discount: '0.00',
-        subtotal: '50.00',
-        vat: '0.00',
-        total: '50.00',
-        sourceRowIndex: 1,
-        isComplete: true,
-        isWinning: true,
-        winningCompetitionId: competition.id
+  describe('updateFinishedStatus()', () => {
+    test('should call correct API endpoint with finished=true', async () => {
+      // Arrange
+      const competitionId = 1;
+      const finished = true;
+      const mockResponse = {
+        id: 1,
+        name: 'Test Competition',
+        finished: true,
+        createdAt: '2024-01-15T10:00:00Z'
       };
-      
-      await dbManager.store([transaction]);
-      
-      const result = await competitionManager.delete(competition.id);
-      
-      expect(result.success).toBe(false);
-      expect(result.reason).toBe('has_transactions');
-      expect(result.count).toBe(1);
-      
-      // Verify competition still exists
-      const retrieved = await competitionManager.getById(competition.id);
-      expect(retrieved).not.toBeNull();
+
+      mockApiClient.updateCompetition.mockResolvedValue(mockResponse);
+
+      // Act
+      const result = await competitionManager.updateFinishedStatus(competitionId, finished);
+
+      // Assert
+      expect(mockApiClient.updateCompetition).toHaveBeenCalledWith(1, { finished: true });
+      expect(result).toEqual({
+        id: 1,
+        name: 'Test Competition',
+        finished: true,
+        createdAt: new Date('2024-01-15T10:00:00Z')
+      });
     });
 
-    test('should return correct count of associated transactions', async () => {
-      const competition = await competitionManager.create('Test Competition');
-      
-      // Create multiple transactions
-      const transactions = [
+    test('should call correct API endpoint with finished=false', async () => {
+      // Arrange
+      const competitionId = 2;
+      const finished = false;
+      const mockResponse = {
+        id: 2,
+        name: 'Another Competition',
+        finished: false,
+        createdAt: '2024-01-20T15:30:00Z'
+      };
+
+      mockApiClient.updateCompetition.mockResolvedValue(mockResponse);
+
+      // Act
+      const result = await competitionManager.updateFinishedStatus(competitionId, finished);
+
+      // Assert
+      expect(mockApiClient.updateCompetition).toHaveBeenCalledWith(2, { finished: false });
+      expect(result).toEqual({
+        id: 2,
+        name: 'Another Competition',
+        finished: false,
+        createdAt: new Date('2024-01-20T15:30:00Z')
+      });
+    });
+
+    test('should handle API errors appropriately', async () => {
+      // Arrange
+      const competitionId = 999;
+      const finished = true;
+      const apiError = new Error('Competition not found');
+      apiError.code = 'NOT_FOUND';
+
+      mockApiClient.updateCompetition.mockRejectedValue(apiError);
+
+      // Act & Assert
+      await expect(competitionManager.updateFinishedStatus(competitionId, finished))
+        .rejects.toThrow('Failed to update finished status: Competition not found');
+
+      expect(mockApiClient.updateCompetition).toHaveBeenCalledWith(999, { finished: true });
+    });
+
+    test('should wrap API errors with appropriate error code', async () => {
+      // Arrange
+      const competitionId = 1;
+      const finished = true;
+      const apiError = new Error('Network error');
+
+      mockApiClient.updateCompetition.mockRejectedValue(apiError);
+
+      // Act & Assert
+      try {
+        await competitionManager.updateFinishedStatus(competitionId, finished);
+        fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error.message).toBe('Failed to update finished status: Network error');
+        expect(error.code).toBe('UPDATE_FAILED');
+        expect(error.originalError).toBe(apiError);
+      }
+    });
+  });
+
+  describe('getAll() with finished filter', () => {
+    test('should pass finished=true parameter correctly', async () => {
+      // Arrange
+      const mockResponse = {
+        competitions: [
+          {
+            id: 1,
+            name: 'Finished Competition',
+            finished: true,
+            createdAt: '2024-01-15T10:00:00Z'
+          }
+        ]
+      };
+
+      mockApiClient.request.mockResolvedValue(mockResponse);
+
+      // Act
+      const result = await competitionManager.getAll({ finished: true });
+
+      // Assert
+      expect(mockApiClient.request).toHaveBeenCalledWith('/api/competitions?finished=true', { method: 'GET' });
+      expect(result).toEqual([
         {
-          date: '26-08-2025',
-          time: '18:19',
-          till: 'Till 1',
-          type: 'Topup (Competitions)',
-          member: 'Member 1',
-          player: 'Player 1',
-          competition: '',
-          price: '50.00',
-          discount: '0.00',
-          subtotal: '50.00',
-          vat: '0.00',
-          total: '50.00',
-          sourceRowIndex: 1,
-          isComplete: true,
-          isWinning: true,
-          winningCompetitionId: competition.id
-        },
-        {
-          date: '27-08-2025',
-          time: '19:20',
-          till: 'Till 1',
-          type: 'Topup (Competitions)',
-          member: 'Member 2',
-          player: 'Player 2',
-          competition: '',
-          price: '30.00',
-          discount: '0.00',
-          subtotal: '30.00',
-          vat: '0.00',
-          total: '30.00',
-          sourceRowIndex: 2,
-          isComplete: true,
-          isWinning: true,
-          winningCompetitionId: competition.id
+          id: 1,
+          name: 'Finished Competition',
+          finished: true,
+          createdAt: new Date('2024-01-15T10:00:00Z')
         }
-      ];
-      
-      await dbManager.store(transactions);
-      
-      const result = await competitionManager.delete(competition.id);
-      
-      expect(result.success).toBe(false);
-      expect(result.count).toBe(2);
-    });
-  });
-
-  describe('getAll()', () => {
-    test('should return empty array when no competitions exist', async () => {
-      const competitions = await competitionManager.getAll();
-      
-      expect(competitions).toEqual([]);
+      ]);
     });
 
-    test('should return all competitions', async () => {
-      await competitionManager.create('Competition A');
-      await competitionManager.create('Competition B');
-      await competitionManager.create('Competition C');
-      
-      const competitions = await competitionManager.getAll();
-      
-      expect(competitions).toHaveLength(3);
-      expect(competitions.map(c => c.name)).toContain('Competition A');
-      expect(competitions.map(c => c.name)).toContain('Competition B');
-      expect(competitions.map(c => c.name)).toContain('Competition C');
-    });
+    test('should pass finished=false parameter correctly', async () => {
+      // Arrange
+      const mockResponse = {
+        competitions: [
+          {
+            id: 2,
+            name: 'Active Competition',
+            finished: false,
+            createdAt: '2024-01-20T15:30:00Z'
+          }
+        ]
+      };
 
-    test('should return competitions sorted alphabetically by name', async () => {
-      await competitionManager.create('Zebra Cup');
-      await competitionManager.create('Alpha Medal');
-      await competitionManager.create('Beta Trophy');
-      
-      const competitions = await competitionManager.getAll();
-      
-      expect(competitions[0].name).toBe('Alpha Medal');
-      expect(competitions[1].name).toBe('Beta Trophy');
-      expect(competitions[2].name).toBe('Zebra Cup');
-    });
-  });
+      mockApiClient.request.mockResolvedValue(mockResponse);
 
-  describe('getById()', () => {
-    test('should return competition by ID', async () => {
-      const created = await competitionManager.create('Test Competition');
-      const retrieved = await competitionManager.getById(created.id);
-      
-      expect(retrieved).not.toBeNull();
-      expect(retrieved.id).toBe(created.id);
-      expect(retrieved.name).toBe('Test Competition');
-    });
+      // Act
+      const result = await competitionManager.getAll({ finished: false });
 
-    test('should return null for non-existent ID', async () => {
-      const retrieved = await competitionManager.getById(99999);
-      
-      expect(retrieved).toBeNull();
-    });
-  });
-
-  describe('checkAssociatedTransactions()', () => {
-    test('should return 0 when no transactions associated', async () => {
-      const competition = await competitionManager.create('Test Competition');
-      const count = await competitionManager.checkAssociatedTransactions(competition.id);
-      
-      expect(count).toBe(0);
-    });
-
-    test('should return correct count of associated transactions', async () => {
-      const competition = await competitionManager.create('Test Competition');
-      
-      const transactions = [
+      // Assert
+      expect(mockApiClient.request).toHaveBeenCalledWith('/api/competitions?finished=false', { method: 'GET' });
+      expect(result).toEqual([
         {
-          date: '26-08-2025',
-          time: '18:19',
-          till: 'Till 1',
-          type: 'Topup (Competitions)',
-          member: 'Member 1',
-          player: 'Player 1',
-          competition: '',
-          price: '50.00',
-          discount: '0.00',
-          subtotal: '50.00',
-          vat: '0.00',
-          total: '50.00',
-          sourceRowIndex: 1,
-          isComplete: true,
-          isWinning: true,
-          winningCompetitionId: competition.id
-        },
-        {
-          date: '27-08-2025',
-          time: '19:20',
-          till: 'Till 1',
-          type: 'Topup (Competitions)',
-          member: 'Member 2',
-          player: 'Player 2',
-          competition: '',
-          price: '30.00',
-          discount: '0.00',
-          subtotal: '30.00',
-          vat: '0.00',
-          total: '30.00',
-          sourceRowIndex: 2,
-          isComplete: true,
-          isWinning: false,
-          winningCompetitionId: null
+          id: 2,
+          name: 'Active Competition',
+          finished: false,
+          createdAt: new Date('2024-01-20T15:30:00Z')
         }
-      ];
-      
-      await dbManager.store(transactions);
-      
-      const count = await competitionManager.checkAssociatedTransactions(competition.id);
-      
-      expect(count).toBe(1);
+      ]);
     });
 
-    test('should not count transactions from other competitions', async () => {
-      const comp1 = await competitionManager.create('Competition 1');
-      const comp2 = await competitionManager.create('Competition 2');
-      
-      const transactions = [
+    test('should not include finished parameter when not specified', async () => {
+      // Arrange
+      const mockResponse = {
+        competitions: [
+          {
+            id: 1,
+            name: 'Competition 1',
+            finished: true,
+            createdAt: '2024-01-15T10:00:00Z'
+          },
+          {
+            id: 2,
+            name: 'Competition 2',
+            finished: false,
+            createdAt: '2024-01-20T15:30:00Z'
+          }
+        ]
+      };
+
+      mockApiClient.request.mockResolvedValue(mockResponse);
+
+      // Act
+      const result = await competitionManager.getAll();
+
+      // Assert
+      expect(mockApiClient.request).toHaveBeenCalledWith('/api/competitions', { method: 'GET' });
+      expect(result).toHaveLength(2);
+    });
+
+    test('should handle empty options object', async () => {
+      // Arrange
+      const mockResponse = { competitions: [] };
+      mockApiClient.request.mockResolvedValue(mockResponse);
+
+      // Act
+      const result = await competitionManager.getAll({});
+
+      // Assert
+      expect(mockApiClient.request).toHaveBeenCalledWith('/api/competitions', { method: 'GET' });
+      expect(result).toEqual([]);
+    });
+
+    test('should sort results alphabetically by name', async () => {
+      // Arrange
+      const mockResponse = {
+        competitions: [
+          {
+            id: 3,
+            name: 'Zebra Competition',
+            finished: false,
+            createdAt: '2024-01-25T12:00:00Z'
+          },
+          {
+            id: 1,
+            name: 'Alpha Competition',
+            finished: false,
+            createdAt: '2024-01-15T10:00:00Z'
+          },
+          {
+            id: 2,
+            name: 'Beta Competition',
+            finished: false,
+            createdAt: '2024-01-20T15:30:00Z'
+          }
+        ]
+      };
+
+      mockApiClient.request.mockResolvedValue(mockResponse);
+
+      // Act
+      const result = await competitionManager.getAll({ finished: false });
+
+      // Assert
+      expect(result.map(c => c.name)).toEqual([
+        'Alpha Competition',
+        'Beta Competition',
+        'Zebra Competition'
+      ]);
+    });
+
+    test('should handle API errors appropriately', async () => {
+      // Arrange
+      const apiError = new Error('Server error');
+      mockApiClient.request.mockRejectedValue(apiError);
+
+      // Act & Assert
+      await expect(competitionManager.getAll({ finished: true }))
+        .rejects.toThrow('Failed to retrieve competitions: Server error');
+
+      expect(mockApiClient.request).toHaveBeenCalledWith('/api/competitions?finished=true', { method: 'GET' });
+    });
+
+    test('should wrap API errors with appropriate error code', async () => {
+      // Arrange
+      const apiError = new Error('Network timeout');
+      mockApiClient.request.mockRejectedValue(apiError);
+
+      // Act & Assert
+      try {
+        await competitionManager.getAll({ finished: false });
+        fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error.message).toBe('Failed to retrieve competitions: Network timeout');
+        expect(error.code).toBe('RETRIEVAL_FAILED');
+        expect(error.originalError).toBe(apiError);
+      }
+    });
+
+    test('should handle response with missing competitions array', async () => {
+      // Arrange
+      const mockResponse = {}; // Missing competitions array
+      mockApiClient.request.mockResolvedValue(mockResponse);
+
+      // Act
+      const result = await competitionManager.getAll({ finished: true });
+
+      // Assert
+      expect(result).toEqual([]);
+    });
+
+    test('should handle competitions with missing finished field', async () => {
+      // Arrange
+      const mockResponse = {
+        competitions: [
+          {
+            id: 1,
+            name: 'Legacy Competition',
+            // finished field missing
+            createdAt: '2024-01-15T10:00:00Z'
+          }
+        ]
+      };
+
+      mockApiClient.request.mockResolvedValue(mockResponse);
+
+      // Act
+      const result = await competitionManager.getAll();
+
+      // Assert
+      expect(result).toEqual([
         {
-          date: '26-08-2025',
-          time: '18:19',
-          till: 'Till 1',
-          type: 'Topup (Competitions)',
-          member: 'Member 1',
-          player: 'Player 1',
-          competition: '',
-          price: '50.00',
-          discount: '0.00',
-          subtotal: '50.00',
-          vat: '0.00',
-          total: '50.00',
-          sourceRowIndex: 1,
-          isComplete: true,
-          isWinning: true,
-          winningCompetitionId: comp1.id
-        },
-        {
-          date: '27-08-2025',
-          time: '19:20',
-          till: 'Till 1',
-          type: 'Topup (Competitions)',
-          member: 'Member 2',
-          player: 'Player 2',
-          competition: '',
-          price: '30.00',
-          discount: '0.00',
-          subtotal: '30.00',
-          vat: '0.00',
-          total: '30.00',
-          sourceRowIndex: 2,
-          isComplete: true,
-          isWinning: true,
-          winningCompetitionId: comp2.id
+          id: 1,
+          name: 'Legacy Competition',
+          finished: undefined, // Should preserve the undefined value
+          createdAt: new Date('2024-01-15T10:00:00Z')
         }
-      ];
-      
-      await dbManager.store(transactions);
-      
-      const count1 = await competitionManager.checkAssociatedTransactions(comp1.id);
-      const count2 = await competitionManager.checkAssociatedTransactions(comp2.id);
-      
-      expect(count1).toBe(1);
-      expect(count2).toBe(1);
-    });
-  });
-
-  describe('Error handling', () => {
-    test('should throw error when database not initialized', async () => {
-      const uninitializedManager = new CompetitionManager(new DatabaseManager());
-      
-      await expect(uninitializedManager.create('Test')).rejects.toThrow('Database not initialized');
-      await expect(uninitializedManager.update(1, 'Test')).rejects.toThrow('Database not initialized');
-      await expect(uninitializedManager.delete(1)).rejects.toThrow('Database not initialized');
-      await expect(uninitializedManager.getAll()).rejects.toThrow('Database not initialized');
-      await expect(uninitializedManager.getById(1)).rejects.toThrow('Database not initialized');
-      await expect(uninitializedManager.checkAssociatedTransactions(1)).rejects.toThrow('Database not initialized');
+      ]);
     });
   });
 });

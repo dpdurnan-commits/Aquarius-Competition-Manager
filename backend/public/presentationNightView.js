@@ -507,6 +507,15 @@ export class PresentationNightView {
       this.winnersTable.clearLocalStorage();
       this.clearSelectedSeason();
       
+      // Call callback to refresh main app summaries if available
+      if (this.onDistributionCreated && typeof this.onDistributionCreated === 'function') {
+        try {
+          await this.onDistributionCreated();
+        } catch (error) {
+          console.error('Error in onDistributionCreated callback:', error);
+        }
+      }
+      
       // Refresh view to show read-only state
       await this.loadSeasonWinners(this.selectedSeasonId);
       

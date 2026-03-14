@@ -119,14 +119,14 @@ This implementation plan breaks down the feature into discrete coding tasks that
     - Verify dialog name field contains exact input name
     - _Requirements: 2.2_
   
-  - [ ]* 4.7 Write property test for required field validation (OPTIONAL)
+  - [x] 4.7 Write property test for required field validation (OPTIONAL)
     - **Property 4: Required Field Validation**
     - **Validates: Requirements 2.3, 2.4, 2.5**
     - Generate competition data with missing fields
     - Verify system rejects submissions with missing date, type, or seasonId
     - _Requirements: 2.3, 2.4, 2.5_
   
-  - [ ]* 4.8 Write property test for season filtering (OPTIONAL)
+  - [x] 4.8 Write property test for season filtering (OPTIONAL)
     - **Property 5: Season Filtering**
     - **Validates: Requirements 2.5, 5.4**
     - Generate seasons with various allCompetitionsAdded values
@@ -170,42 +170,42 @@ This implementation plan breaks down the feature into discrete coding tasks that
     - Modify success message to show "Imported X transactions and created Y competitions"
     - _Requirements: 4.5_
   
-  - [ ]* 6.5 Write property test for sequential dialog presentation
+  - [x] 6.5 Write property test for sequential dialog presentation
     - **Property 6: Sequential Dialog Presentation**
     - **Validates: Requirements 2.6**
     - Generate lists of N new competition names (N > 1)
     - Verify system presents exactly N dialogs in sequence
     - _Requirements: 2.6_
   
-  - [ ]* 6.6 Write property test for competition creation round-trip
+  - [x]* 6.6 Write property test for competition creation round-trip
     - **Property 7: Competition Creation Round-Trip**
     - **Validates: Requirements 3.1**
     - Generate valid competition data
     - Verify database record matches submitted field values
     - _Requirements: 3.1_
   
-  - [ ]* 6.7 Write property test for sequential creation workflow
+  - [x]* 6.7 Write property test for sequential creation workflow
     - **Property 8: Sequential Creation Workflow**
     - **Validates: Requirements 3.2**
     - Generate list of new competitions
     - Verify after creating competition i, dialog for i+1 is shown
     - _Requirements: 3.2_
   
-  - [ ]* 6.8 Write property test for season validation on creation
+  - [x]* 6.8 Write property test for season validation on creation
     - **Property 9: Season Validation on Creation**
     - **Validates: Requirements 3.5**
     - Generate competition data with seasonId where allCompetitionsAdded=true
     - Verify system rejects the creation
     - _Requirements: 3.5_
   
-  - [ ]* 6.9 Write property test for existing validation preservation
+  - [x]* 6.9 Write property test for existing validation preservation
     - **Property 11: Existing Validation Preservation**
     - **Validates: Requirements 4.4, 6.2, 6.3, 6.4**
     - Generate transaction imports with various validation issues
     - Verify chronological validation and duplicate checking still work
     - _Requirements: 4.4, 6.2, 6.3, 6.4_
   
-  - [ ]* 6.10 Write property test for success message accuracy
+  - [x]* 6.10 Write property test for success message accuracy
     - **Property 12: Success Message Accuracy**
     - **Validates: Requirements 4.5**
     - Generate successful imports with various transaction and competition counts
@@ -236,7 +236,7 @@ This implementation plan breaks down the feature into discrete coding tasks that
     - Ensure season list refreshes after season updates
     - _Requirements: 5.1_
   
-  - [ ]* 7.5 Write property test for season flag toggle round-trip
+  - [x] 7.5 Write property test for season flag toggle round-trip
     - **Property 13: Season Flag Toggle Round-Trip**
     - **Validates: Requirements 5.2, 5.5, 5.6**
     - Generate presentation seasons
@@ -244,14 +244,14 @@ This implementation plan breaks down the feature into discrete coding tasks that
     - Verify database updated and query returns new value
     - _Requirements: 5.2, 5.5, 5.6_
   
-  - [ ]* 7.6 Write property test for season flag display consistency
+  - [x] 7.6 Write property test for season flag display consistency
     - **Property 14: Season Flag Display Consistency**
     - **Validates: Requirements 5.3**
     - Generate presentation seasons with various flag values
     - Verify displayed status matches database value
     - _Requirements: 5.3_
   
-  - [ ]* 7.7 Write unit tests for season management UI
+  - [x] 7.7 Write unit tests for season management UI
     - Test seasons table renders correctly
     - Test toggle updates database
     - Test toggle state persists across page refreshes
@@ -262,7 +262,7 @@ This implementation plan breaks down the feature into discrete coding tasks that
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 9. Write integration tests for complete workflows
-  - [ ]* 9.1 Write integration test for import with new competitions
+  - [x] 9.1 Write integration test for import with new competitions
     - Upload CSV with transactions referencing 2 new competitions
     - Verify detection identifies both competitions
     - Complete both creation dialogs
@@ -271,7 +271,7 @@ This implementation plan breaks down the feature into discrete coding tasks that
     - Verify summary view displays
     - _Requirements: 1.1, 1.2, 2.1, 3.1, 4.1, 4.2_
   
-  - [ ]* 9.2 Write integration test for import with existing competitions
+  - [x] 9.2 Write integration test for import with existing competitions
     - Pre-create competitions in database
     - Upload CSV with transactions referencing only existing competitions
     - Verify no dialogs shown
@@ -279,7 +279,7 @@ This implementation plan breaks down the feature into discrete coding tasks that
     - Verify summary view displays
     - _Requirements: 1.4, 6.1_
   
-  - [ ]* 9.3 Write integration test for import cancellation
+  - [x] 9.3 Write integration test for import cancellation
     - Upload CSV with transactions referencing new competition
     - Cancel the creation dialog
     - Verify no competitions created
@@ -287,7 +287,7 @@ This implementation plan breaks down the feature into discrete coding tasks that
     - Verify appropriate message displayed
     - _Requirements: 2.7, 2.8_
   
-  - [ ]* 9.4 Write integration test for season management workflow
+  - [x] 9.4 Write integration test for season management workflow
     - Create season with allCompetitionsAdded=false
     - Toggle to true
     - Verify database updated

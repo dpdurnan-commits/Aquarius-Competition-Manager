@@ -32,7 +32,7 @@
     <div class="container">
         <header>
             <h1>Aquarius Competition Manager</h1>
-            <p class="subtitle">Transform and export golf competition transaction data</p>
+            <p class="subtitle">Import and transform golf competition transaction data</p>
             <div class="header-actions">
                 <button id="competition-accounts-button" class="competition-accounts-button" aria-label="Competition Accounts">
                     <span class="accounts-icon" aria-hidden="true">📊</span>
@@ -140,9 +140,9 @@
                 <div id="transaction-summary-container"></div>
             </section>
 
-            <!-- Competition Accounts View Section -->
+            <!-- Competition Management Section (for Manage Competitions button) -->
             <section id="competition-accounts-section" style="display: none;" aria-labelledby="competition-accounts-heading">
-                <h2 id="competition-accounts-heading" style="margin-bottom: 20px;">Competition Results Management</h2>
+                <h2 id="competition-accounts-heading" style="margin-bottom: 20px;">Competition Management</h2>
                 <div id="competition-accounts-container"></div>
             </section>
 
@@ -152,150 +152,6 @@
                 <div id="presentation-night-container"></div>
             </section>
         </main>
-
-        <!-- Competition Manager Modal -->
-        <div id="competition-manager-modal" class="modal" style="display: none;" role="dialog" aria-labelledby="competition-manager-heading" aria-modal="true">
-            <div class="modal-overlay"></div>
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 id="competition-manager-heading">Manage Competitions</h2>
-                    <button id="close-competition-manager" class="close-button" aria-label="Close competition manager">×</button>
-                </div>
-                
-                <div class="modal-body">
-                    <!-- Error/Success Messages -->
-                    <div id="competition-error-container" class="competition-message" style="display: none;" role="alert" aria-live="assertive">
-                        <span id="competition-error-text"></span>
-                        <button id="competition-error-dismiss" aria-label="Dismiss message">×</button>
-                    </div>
-
-                    <!-- Add Competition Form -->
-                    <div class="competition-form">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="competition-name-input">Competition Name</label>
-                                <input 
-                                    type="text" 
-                                    id="competition-name-input" 
-                                    placeholder="Competition Name" 
-                                    aria-label="Competition name"
-                                    maxlength="255"
-                                />
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="competition-type-select">Type</label>
-                                <select id="competition-type-select" aria-label="Competition type">
-                                    <option value="singles">Singles</option>
-                                    <option value="doubles">Doubles</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="competition-season-select">Presentation Season</label>
-                                <select id="competition-season-select" aria-label="Presentation season">
-                                    <option value="">Loading seasons...</option>
-                                </select>
-                            </div>
-                        </div>
-                        <button id="add-competition-btn" class="primary-button">
-                            <span class="add-icon" aria-hidden="true">➕</span>
-                            <span>Add Competition</span>
-                        </button>
-                    </div>
-
-                    <!-- Competition List -->
-                    <div class="competition-list-container">
-                        <h3 class="competition-list-heading">Competitions</h3>
-                        <div id="competition-list-empty" class="empty-state" style="display: none;">
-                            No competitions yet. Add your first competition above.
-                        </div>
-                        <table id="competition-list-table" class="competition-table" style="display: none;">
-                            <thead>
-                                <tr>
-                                    <th scope="col">Competition Name</th>
-                                    <th scope="col">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="competition-list-body">
-                                <!-- Rows inserted dynamically -->
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Season Management Section -->
-                    <div class="season-management-section">
-                        <h3 class="season-list-heading">Presentation Seasons</h3>
-                        <div id="season-list-empty" class="empty-state" style="display: none;">
-                            No presentation seasons yet.
-                        </div>
-                        <table id="season-list-table" class="season-table" style="display: none;">
-                            <thead>
-                                <tr>
-                                    <th scope="col">Season Name</th>
-                                    <th scope="col">Status</th>
-                                    <th scope="col">All Competitions Added</th>
-                                </tr>
-                            </thead>
-                            <tbody id="season-list-body">
-                                <!-- Rows inserted dynamically -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Weekly Drill-Down Modal -->
-        <div id="weekly-drilldown-modal" class="modal drill-down-modal" style="display: none;" role="dialog" aria-labelledby="drill-down-heading" aria-modal="true">
-            <div class="modal-overlay"></div>
-            <div class="modal-content drill-down-content">
-                <div class="modal-header drill-down-header">
-                    <h2 id="drill-down-heading">Transactions for Week</h2>
-                    <button id="close-drill-down" class="close-button" aria-label="Close drill-down view">×</button>
-                </div>
-                
-                <div class="modal-body drill-down-body">
-                    <!-- Summary Info -->
-                    <div class="drill-down-summary">
-                        <div class="summary-item">
-                            <span class="label">Total Transactions:</span>
-                            <span id="drill-down-total-count" class="value">0</span>
-                        </div>
-                        <div class="summary-item">
-                            <span class="label">Flagged Winnings:</span>
-                            <span id="drill-down-winnings-total" class="value">£0.00</span>
-                        </div>
-                    </div>
-
-                    <!-- Loading Indicator -->
-                    <div id="drill-down-loading" class="loading" style="display: none;" role="status" aria-live="polite">
-                        <div class="spinner" aria-hidden="true"></div>
-                        <span>Loading transactions...</span>
-                    </div>
-
-                    <!-- Transactions Table -->
-                    <div class="table-wrapper drill-down-table-wrapper" role="region" aria-labelledby="drill-down-heading" tabindex="0">
-                        <table id="drill-down-table" class="drill-down-table" aria-label="Weekly transactions">
-                            <thead>
-                                <tr>
-                                    <th scope="col">Date</th>
-                                    <th scope="col">Time</th>
-                                    <th scope="col">Type</th>
-                                    <th scope="col">Member/Player</th>
-                                    <th scope="col">Total</th>
-                                    <th scope="col">Flag Status</th>
-                                    <th scope="col">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="drill-down-body">
-                                <!-- Rows inserted dynamically -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Duplicate Checker Modal -->
         <div id="duplicate-checker-modal" class="modal" style="display: none;" role="dialog" aria-labelledby="duplicate-checker-heading" aria-modal="true">

@@ -89,6 +89,7 @@ export class CompetitionManager {
       return {
         id: competition.id,
         name: competition.name,
+        finished: competition.finished || false,
         createdAt: new Date(competition.createdAt || competition.created_at)
       };
     } catch (error) {
@@ -145,6 +146,7 @@ export class CompetitionManager {
       return {
         id: updated.id,
         name: updated.name,
+        finished: updated.finished || false,
         createdAt: new Date(updated.createdAt || updated.created_at)
       };
     } catch (error) {
@@ -185,17 +187,30 @@ export class CompetitionManager {
   }
 
   /**
-   * Get all competitions
+   * Get all competitions with optional filtering
+   * @param {Object} [options] - Filter options
+   * @param {boolean} [options.finished] - Filter by finished status
    * @returns {Promise<Competition[]>}
    */
-  async getAll() {
+  async getAll(options = {}) {
     try {
-      const competitions = await this.apiClient.getAllCompetitions();
+      // Build query parameters
+      const queryParams = [];
+      if (options.finished !== undefined) {
+        queryParams.push(`finished=${options.finished}`);
+      }
+      
+      const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
+      const endpoint = `/api/competitions${queryString}`;
+      
+      const result = await this.apiClient.request(endpoint, { method: 'GET' });
+      const competitions = result.competitions || [];
       
       // Transform API response to match expected format
       const transformed = competitions.map(comp => ({
         id: comp.id,
         name: comp.name,
+        finished: comp.finished,
         createdAt: new Date(comp.createdAt || comp.created_at)
       }));
 
@@ -244,6 +259,33 @@ export class CompetitionManager {
       // If endpoint doesn't exist or fails, return 0 to allow deletion
       console.warn('Failed to check associated transactions:', error);
       return 0;
+    }
+  }
+
+  /**
+   * Update the finished status of a competition
+   * @param {number} competitionId - Competition ID
+   * @param {boolean} finished - New finished status
+   * @returns {Promise<Competition>}
+   * @throws {Error} If competition not found or update fails
+   */
+  async updateFinishedStatus(competitionId, finished) {
+    try {
+      const updated = await this.apiClient.updateCompetition(competitionId, {
+        finished: finished
+      });
+
+      return {
+        id: updated.id,
+        name: updated.name,
+        finished: updated.finished,
+        createdAt: new Date(updated.createdAt || updated.created_at)
+      };
+    } catch (error) {
+      const wrappedError = new Error(`Failed to update finished status: ${error.message}`);
+      wrappedError.code = error.code || 'UPDATE_FAILED';
+      wrappedError.originalError = error;
+      throw wrappedError;
     }
   }
 }

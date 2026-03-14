@@ -1,7 +1,7 @@
 import * as fc from 'fast-check';
 import { PresentationSeasonService } from './presentationSeason.service';
 import { DatabaseService } from './database.service';
-import { CreateSeasonDTO } from '../types';
+import { CreateSeasonDTO, PresentationSeason } from '../types';
 
 describe('PresentationSeasonService - Property-Based Tests', () => {
   let service: PresentationSeasonService;
@@ -1014,6 +1014,379 @@ describe('PresentationSeasonService - Property-Based Tests', () => {
 
             // Verify regular query was NOT used (should use transaction)
             expect(mockDb.query).not.toHaveBeenCalled();
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+  });
+
+  describe('Property 13: Season Flag Toggle Round-Trip', () => {
+    /**
+     * Feature: auto-create-competitions-from-transactions, Property 13: Season Flag Toggle Round-Trip
+     * Validates: Requirements 5.2, 5.5, 5.6
+     * 
+     * This property tests that toggling the allCompetitionsAdded flag:
+     * 1. Immediately updates the database
+     * 2. Returns the new flag value when queried
+     * 3. Persists the change correctly
+     */
+
+    it('should toggle allCompetitionsAdded flag and persist the change', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          // Generate random season data
+          fc.integer({ min: 0, max: 99 }),
+          fc.integer({ min: 0, max: 99 }),
+          fc.boolean(), // Initial allCompetitionsAdded value
+          async (year1, year2, initialFlagValue) => {
+            // Clear mock before each iteration
+            mockDb.query.mockClear();
+
+            const startYear = Math.min(year1, year2);
+            const endYear = Math.max(year1, year2);
+            const startYearStr = startYear.toString().padStart(2, '0');
+            const endYearStr = endYear.toString().padStart(2, '0');
+            const seasonName = `Season: Winter ${startYearStr}-Summer ${endYearStr}`;
+            const seasonId = 1;
+
+            // Create initial season with the initial flag value
+            const initialSeason: PresentationSeason = {
+              id: seasonId,
+              name: seasonName,
+              startYear,
+              endYear,
+              isActive: false,
+              allCompetitionsAdded: initialFlagValue,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+
+            // Toggle the flag
+            const newFlagValue = !initialFlagValue;
+
+            // Mock the updateSeason call
+            const updatedSeason: PresentationSeason = {
+              ...initialSeason,
+              allCompetitionsAdded: newFlagValue,
+              updatedAt: new Date(),
+            };
+
+            mockDb.query.mockResolvedValueOnce({
+              rows: [updatedSeason],
+              rowCount: 1,
+              command: 'UPDATE',
+              oid: 0,
+              fields: [],
+            });
+
+            // Execute the toggle
+            const updateResult = await service.updateSeason(seasonId, {
+              allCompetitionsAdded: newFlagValue,
+            });
+
+            // Verify the update returned the new value
+            expect(updateResult.allCompetitionsAdded).toBe(newFlagValue);
+            expect(updateResult.id).toBe(seasonId);
+
+            // Verify database was called with correct parameters
+            expect(mockDb.query).toHaveBeenCalledWith(
+              expect.stringContaining('UPDATE presentation_seasons'),
+              expect.arrayContaining([newFlagValue, seasonId])
+            );
+
+            // Now query the season to verify persistence
+            mockDb.query.mockResolvedValueOnce({
+              rows: [updatedSeason],
+              rowCount: 1,
+              command: 'SELECT',
+              oid: 0,
+              fields: [],
+            });
+
+            // Query all seasons (simulating a fresh read from database)
+            const allSeasons = await service.getAllSeasons();
+            const queriedSeason = allSeasons.find(s => s.id === seasonId);
+
+            // Verify the queried value matches the toggled value
+            expect(queriedSeason).toBeDefined();
+            expect(queriedSeason?.allCompetitionsAdded).toBe(newFlagValue);
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    it('should handle multiple consecutive toggles correctly', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.integer({ min: 0, max: 99 }),
+          fc.integer({ min: 0, max: 99 }),
+          fc.boolean(), // Initial value
+          fc.integer({ min: 1, max: 5 }), // Number of toggles
+          async (year1, year2, initialValue, numToggles) => {
+            // Clear mock before each iteration
+            mockDb.query.mockClear();
+
+            const startYear = Math.min(year1, year2);
+            const endYear = Math.max(year1, year2);
+            const seasonId = 1;
+
+            let currentValue = initialValue;
+
+            // Perform multiple toggles
+            for (let i = 0; i < numToggles; i++) {
+              const newValue = !currentValue;
+
+              const updatedSeason: PresentationSeason = {
+                id: seasonId,
+                name: `Season: Winter ${startYear.toString().padStart(2, '0')}-Summer ${endYear.toString().padStart(2, '0')}`,
+                startYear,
+                endYear,
+                isActive: false,
+                allCompetitionsAdded: newValue,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              };
+
+              mockDb.query.mockResolvedValueOnce({
+                rows: [updatedSeason],
+                rowCount: 1,
+                command: 'UPDATE',
+                oid: 0,
+                fields: [],
+              });
+
+              const result = await service.updateSeason(seasonId, {
+                allCompetitionsAdded: newValue,
+              });
+
+              // Verify each toggle returns the correct value
+              expect(result.allCompetitionsAdded).toBe(newValue);
+
+              currentValue = newValue;
+            }
+
+            // Final value should be different from initial if odd number of toggles
+            const expectedFinalValue = numToggles % 2 === 0 ? initialValue : !initialValue;
+            expect(currentValue).toBe(expectedFinalValue);
+
+            // Verify database was called correct number of times
+            expect(mockDb.query).toHaveBeenCalledTimes(numToggles);
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    it('should toggle from false to true and verify persistence', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.integer({ min: 0, max: 99 }),
+          fc.integer({ min: 0, max: 99 }),
+          async (year1, year2) => {
+            // Clear mock before each iteration
+            mockDb.query.mockClear();
+
+            const startYear = Math.min(year1, year2);
+            const endYear = Math.max(year1, year2);
+            const seasonId = 1;
+
+            const seasonData: PresentationSeason = {
+              id: seasonId,
+              name: `Season: Winter ${startYear.toString().padStart(2, '0')}-Summer ${endYear.toString().padStart(2, '0')}`,
+              startYear,
+              endYear,
+              isActive: false,
+              allCompetitionsAdded: false,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+
+            // Toggle from false to true
+            const updatedSeason = { ...seasonData, allCompetitionsAdded: true };
+
+            mockDb.query.mockResolvedValueOnce({
+              rows: [updatedSeason],
+              rowCount: 1,
+              command: 'UPDATE',
+              oid: 0,
+              fields: [],
+            });
+
+            const result = await service.updateSeason(seasonId, {
+              allCompetitionsAdded: true,
+            });
+
+            // Verify the flag is now true
+            expect(result.allCompetitionsAdded).toBe(true);
+
+            // Query with filter to verify it appears in the correct filtered list
+            mockDb.query.mockResolvedValueOnce({
+              rows: [updatedSeason],
+              rowCount: 1,
+              command: 'SELECT',
+              oid: 0,
+              fields: [],
+            });
+
+            const seasonsWithFlagTrue = await service.getAllSeasons(true);
+            expect(seasonsWithFlagTrue).toHaveLength(1);
+            expect(seasonsWithFlagTrue[0].allCompetitionsAdded).toBe(true);
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    it('should toggle from true to false and verify persistence', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.integer({ min: 0, max: 99 }),
+          fc.integer({ min: 0, max: 99 }),
+          async (year1, year2) => {
+            // Clear mock before each iteration
+            mockDb.query.mockClear();
+
+            const startYear = Math.min(year1, year2);
+            const endYear = Math.max(year1, year2);
+            const seasonId = 1;
+
+            const seasonData: PresentationSeason = {
+              id: seasonId,
+              name: `Season: Winter ${startYear.toString().padStart(2, '0')}-Summer ${endYear.toString().padStart(2, '0')}`,
+              startYear,
+              endYear,
+              isActive: false,
+              allCompetitionsAdded: true,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+
+            // Toggle from true to false
+            const updatedSeason = { ...seasonData, allCompetitionsAdded: false };
+
+            mockDb.query.mockResolvedValueOnce({
+              rows: [updatedSeason],
+              rowCount: 1,
+              command: 'UPDATE',
+              oid: 0,
+              fields: [],
+            });
+
+            const result = await service.updateSeason(seasonId, {
+              allCompetitionsAdded: false,
+            });
+
+            // Verify the flag is now false
+            expect(result.allCompetitionsAdded).toBe(false);
+
+            // Query with filter to verify it appears in the correct filtered list
+            mockDb.query.mockResolvedValueOnce({
+              rows: [updatedSeason],
+              rowCount: 1,
+              command: 'SELECT',
+              oid: 0,
+              fields: [],
+            });
+
+            const seasonsWithFlagFalse = await service.getAllSeasons(false);
+            expect(seasonsWithFlagFalse).toHaveLength(1);
+            expect(seasonsWithFlagFalse[0].allCompetitionsAdded).toBe(false);
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    it('should preserve other season fields when toggling flag', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.integer({ min: 0, max: 99 }),
+          fc.integer({ min: 0, max: 99 }),
+          fc.boolean(), // isActive
+          fc.boolean(), // initial allCompetitionsAdded
+          async (year1, year2, isActive, initialFlag) => {
+            // Clear mock before each iteration
+            mockDb.query.mockClear();
+
+            const startYear = Math.min(year1, year2);
+            const endYear = Math.max(year1, year2);
+            const seasonId = 1;
+            const seasonName = `Season: Winter ${startYear.toString().padStart(2, '0')}-Summer ${endYear.toString().padStart(2, '0')}`;
+
+            const originalSeason: PresentationSeason = {
+              id: seasonId,
+              name: seasonName,
+              startYear,
+              endYear,
+              isActive,
+              allCompetitionsAdded: initialFlag,
+              createdAt: new Date('2024-01-01'),
+              updatedAt: new Date('2024-01-01'),
+            };
+
+            // Toggle the flag
+            const newFlagValue = !initialFlag;
+            const updatedSeason: PresentationSeason = {
+              ...originalSeason,
+              allCompetitionsAdded: newFlagValue,
+              updatedAt: new Date(),
+            };
+
+            mockDb.query.mockResolvedValueOnce({
+              rows: [updatedSeason],
+              rowCount: 1,
+              command: 'UPDATE',
+              oid: 0,
+              fields: [],
+            });
+
+            const result = await service.updateSeason(seasonId, {
+              allCompetitionsAdded: newFlagValue,
+            });
+
+            // Verify only the flag changed, other fields preserved
+            expect(result.id).toBe(originalSeason.id);
+            expect(result.name).toBe(originalSeason.name);
+            expect(result.startYear).toBe(originalSeason.startYear);
+            expect(result.endYear).toBe(originalSeason.endYear);
+            expect(result.isActive).toBe(originalSeason.isActive);
+            expect(result.allCompetitionsAdded).toBe(newFlagValue);
+            expect(result.createdAt).toEqual(originalSeason.createdAt);
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    it('should throw error when toggling flag for non-existent season', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.integer({ min: 1, max: 1000 }), // Random non-existent ID
+          fc.boolean(),
+          async (nonExistentId, newValue) => {
+            // Clear mock before each iteration
+            mockDb.query.mockClear();
+
+            // Mock empty result (season not found)
+            mockDb.query.mockResolvedValueOnce({
+              rows: [],
+              rowCount: 0,
+              command: 'UPDATE',
+              oid: 0,
+              fields: [],
+            });
+
+            // Should throw error for non-existent season
+            await expect(
+              service.updateSeason(nonExistentId, {
+                allCompetitionsAdded: newValue,
+              })
+            ).rejects.toThrow(new RegExp(`Season with id ${nonExistentId} not found`));
+
+            // Verify database was called
+            expect(mockDb.query).toHaveBeenCalledTimes(1);
           }
         ),
         { numRuns: 100 }

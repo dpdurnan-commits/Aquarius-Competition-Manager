@@ -12,14 +12,14 @@ import { ChronologicalValidator } from './chronologicalValidator.js';
 import { WeeklySummarizer } from './weeklySummarizer.js';
 import { TransactionSummaryView } from './transactionSummaryView.js';
 import { CompetitionManager } from './competitionManager.js';
-import { CompetitionManagerUI } from './competitionManagerUI.js';
 import { TransactionFlagger } from './transactionFlagger.js';
-import { WeeklyDrillDownView } from './weeklyDrillDownView.js';
+import { WeeklyDrillDownView } from './weeklyDrillDownView-old.js';
 import { DuplicateChecker } from './duplicateChecker.js';
 import { CompetitionAccountsView } from './competitionAccountsView.js';
 import { CompetitionDetector } from './competitionDetector.js';
 import { CompetitionCreationDialog } from './competitionCreationDialog.js';
 import { PresentationNightView } from './presentationNightView.js';
+import { CompetitionManagementView } from './competitionManagementView.js';
 
 // Application state
 let transformedRecords = [];
@@ -32,7 +32,6 @@ const chronologicalValidator = new ChronologicalValidator(apiClient);
 const competitionDetector = new CompetitionDetector(apiClient);
 const weeklySummarizer = new WeeklySummarizer();
 const competitionManager = new CompetitionManager(apiClient);
-const competitionManagerUI = new CompetitionManagerUI(competitionManager, apiClient);
 const transactionFlagger = new TransactionFlagger(apiClient, competitionManager, weeklySummarizer);
 const duplicateChecker = new DuplicateChecker(apiClient);
 
@@ -41,9 +40,11 @@ let weeklyDrillDownView = null;
 let transactionSummaryView = null;
 let competitionAccountsView = null;
 let presentationNightView = null;
+let competitionManagementView = null;
 
 // Initialize views after API client is ready
 async function initializeViews() {
+    console.log('=== Initializing Views ===');
     weeklyDrillDownView = new WeeklyDrillDownView(apiClient, competitionManager, transactionFlagger, null);
     transactionSummaryView = new TransactionSummaryView('transaction-summary-container', weeklyDrillDownView);
     
@@ -57,6 +58,18 @@ async function initializeViews() {
     competitionAccountsView = new CompetitionAccountsView(apiClient);
     presentationNightView = new PresentationNightView(apiClient);
     
+    // Set up callback to refresh summaries when distributions are created
+    if (presentationNightView && typeof presentationNightView.onDistributionCreated !== 'undefined') {
+        presentationNightView.onDistributionCreated = async () => {
+            console.log('Distribution created - refreshing summaries...');
+            await loadAndDisplaySummaries();
+        };
+    }
+    
+    console.log('Creating CompetitionManagementView...');
+    competitionManagementView = new CompetitionManagementView(apiClient, null);
+    console.log('CompetitionManagementView created:', competitionManagementView);
+    
     // Set up callback for drill-down to refresh main view
     weeklyDrillDownView.onTransactionUpdated = async () => {
         await loadAndDisplaySummaries();
@@ -67,6 +80,8 @@ async function initializeViews() {
             await renderRecords(enhancedRecords);
         }
     };
+    
+    console.log('Views initialized successfully');
 }
 
 // DOM Elements
@@ -93,13 +108,17 @@ const presentationNightButton = document.getElementById('presentation-night-butt
 const presentationNightSection = document.getElementById('presentation-night-section');
 
 // Event Listeners
+console.log('Setting up event listeners...');
 fileInput.addEventListener('change', handleFileSelect);
 errorDismiss.addEventListener('click', hideError);
 exportButton.addEventListener('click', handleExport);
 saveToDbButton.addEventListener('click', handleSaveToDatabase);
 resetDbButton.addEventListener('click', handleResetDatabase);
 if (manageCompetitionsButton) {
+    console.log('Attaching event listener to manage competitions button');
     manageCompetitionsButton.addEventListener('click', showCompetitionResultsView);
+} else {
+    console.error('manageCompetitionsButton not found!');
 }
 if (checkDuplicatesButton) {
     checkDuplicatesButton.addEventListener('click', handleCheckDuplicates);
@@ -113,7 +132,6 @@ if (presentationNightButton) {
 
 // Initialize database and load existing summaries
 initializeApp();
-
 /**
  * Initialize application
  */
@@ -588,8 +606,8 @@ function clearData() {
     emptyState.style.display = 'block';
     tableContainer.style.display = 'none';
     fileNameDisplay.textContent = '';
+    recordCount.textContent = '0 records'; // Reset record count display
 }
-
 /**
  * Attach event listeners to flag buttons
  */
@@ -661,8 +679,8 @@ async function showCompetitionSelectionModal(recordId, mode) {
             return;
         }
         
-        // Get all competitions
-        const competitions = await competitionManager.getAll();
+        // Get only active (unfinished) competitions for flagging
+        const competitions = await competitionManager.getAll({ finished: false });
         
         // Create modal HTML
         const modal = document.createElement('div');
@@ -686,7 +704,6 @@ async function showCompetitionSelectionModal(recordId, mode) {
                     <p>Please create a competition first.</p>
                 </div>
                 <div class="competition-selection-actions">
-                    <a href="#" class="manage-competitions-link" id="modal-manage-competitions-link">Manage Competitions</a>
                     <button class="cancel-btn" id="modal-cancel-btn">Close</button>
                 </div>
             `;
@@ -709,7 +726,6 @@ async function showCompetitionSelectionModal(recordId, mode) {
             modalContent += `
                 </div>
                 <div class="competition-selection-actions">
-                    <a href="#" class="manage-competitions-link" id="modal-manage-competitions-link">Manage Competitions</a>
                     <button class="cancel-btn" id="modal-cancel-btn">Cancel</button>
             `;
             
@@ -735,13 +751,6 @@ async function showCompetitionSelectionModal(recordId, mode) {
         const cancelBtn = document.getElementById('modal-cancel-btn');
         cancelBtn.addEventListener('click', () => {
             closeCompetitionSelectionModal();
-        });
-        
-        const manageLink = document.getElementById('modal-manage-competitions-link');
-        manageLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            closeCompetitionSelectionModal();
-            competitionManagerUI.show();
         });
         
         if (mode === 'edit') {
@@ -771,7 +780,7 @@ async function showCompetitionSelectionModal(recordId, mode) {
         
         // Enhanced keyboard navigation
         let currentFocusIndex = 0;
-        const focusableElements = Array.from(modal.querySelectorAll('.competition-option, .cancel-btn, .unflag-btn, .manage-competitions-link'));
+        const focusableElements = Array.from(modal.querySelectorAll('.competition-option, .cancel-btn, .unflag-btn'));
         
         // Focus first competition option
         if (focusableElements.length > 0) {
@@ -1045,92 +1054,109 @@ document.getElementById('duplicate-checker-modal').addEventListener('click', (e)
 console.log('Competition CSV Import application loaded');
 
 /**
- * Show Competition Results Management view (seasons, competitions, results)
+ * CLEAN NAVIGATION FUNCTIONS
+ * Show Competition Management view (competitions, results, seasons)
+ * This is what users see when they click "Manage Competitions" button
+ * Functionality: Competition CRUD, Results Management, Season Management, CSV Results Import/Export
  */
 async function showCompetitionResultsView() {
+    console.log('=== showCompetitionResultsView called ===');
+    console.log('competitionManagementView:', competitionManagementView);
+    console.log('competitionAccountsSection:', competitionAccountsSection);
+    
     // Hide other sections
     const dataViewer = document.getElementById('data-viewer');
     const uploadSection = document.querySelector('.upload-section');
-    const loadingIndicator = document.getElementById('loading-indicator');
     
+    console.log('Hiding sections...');
     if (dataViewer) dataViewer.style.display = 'none';
     if (uploadSection) uploadSection.style.display = 'none';
-    if (loadingIndicator) loadingIndicator.style.display = 'none';
     if (transactionSummarySection) transactionSummarySection.style.display = 'none';
     if (presentationNightSection) presentationNightSection.style.display = 'none';
     
-    // Show Competition Accounts section
+    // Show Competition Management section
     if (competitionAccountsSection) {
+        console.log('Showing competition accounts section...');
         competitionAccountsSection.style.display = 'block';
         
-        // Initialize and render the view if not already done
-        if (competitionAccountsView) {
+        // Initialize and render the Competition Management View
+        if (competitionManagementView) {
             try {
-                // Initialize if not already initialized
-                if (!competitionAccountsView.seasonSelector) {
-                    console.log('Initializing competition view for first time...');
-                    await competitionAccountsView.initialize();
-                    // Render the view after initialization
-                    competitionAccountsView.render('competition-accounts-container');
-                } else {
-                    // Already initialized - just refresh the child components
-                    console.log('Refreshing competition view...');
-                    await competitionAccountsView.refresh();
-                }
+                console.log('Initializing CompetitionManagementView...');
+                await competitionManagementView.initialize();
+                console.log('Rendering CompetitionManagementView...');
+                competitionManagementView.render('competition-accounts-container');
+                console.log('CompetitionManagementView rendered successfully');
             } catch (error) {
-                console.error('Error showing Competition Results view:', error);
-                alert('Failed to load Competition Results view. Please try again.');
+                console.error('Error initializing Competition Management View:', error);
+                showError('Failed to load Competition Management View', 'error');
             }
+        } else {
+            console.error('competitionManagementView is null or undefined');
         }
+    } else {
+        console.error('competitionAccountsSection not found');
     }
 }
 
 /**
- * Hide Competition Results Management view
- */
-function hideCompetitionResultsView() {
-    // Hide Competition Accounts section
-    if (competitionAccountsSection) {
-        competitionAccountsSection.style.display = 'none';
-    }
-    
-    // Show main data viewer and upload section
-    const dataViewer = document.getElementById('data-viewer');
-    const uploadSection = document.querySelector('.upload-section');
-    
-    if (dataViewer) dataViewer.style.display = 'block';
-    if (uploadSection) uploadSection.style.display = 'block';
-    
-    // Show transaction summary if there are records
-    if (transactionSummarySection && enhancedRecords.length > 0) {
-        transactionSummarySection.style.display = 'block';
-    }
-}
-
-/**
- * Show Competition Accounts view (financial balances and pots)
- * This shows the main CSV upload and transaction summary view
+ * Show Competition Accounts view (transaction CSV management, financial balances)
+ * This is what users see when they click "Competition Accounts" button
+ * Functionality: Transaction CSV Upload/Download, Database Operations, Financial Tracking, Balance Management
  */
 async function showCompetitionAccountsView() {
-    // Hide Competition Results Management section
-    if (competitionAccountsSection) {
-        competitionAccountsSection.style.display = 'none';
+    console.log('Showing Competition Accounts View (Transaction/Financial Management)...');
+    
+    // Hide other sections
+    if (competitionAccountsSection) competitionAccountsSection.style.display = 'none';
+    if (presentationNightSection) presentationNightSection.style.display = 'none';
+    
+    // Clear all old data before showing the view
+    console.log('Clearing old Competition Accounts data...');
+    
+    // 1. Clear CSV upload data and transaction table
+    clearData(); // This clears transformedRecords, enhancedRecords, table content, file name, and record count
+    
+    // 2. Clear any displayed weekly drill-down transactions
+    if (weeklyDrillDownView) {
+        weeklyDrillDownView.hideInline(); // This clears the weekly transactions display
     }
     
-    // Hide Presentation Night section
-    if (presentationNightSection) {
-        presentationNightSection.style.display = 'none';
+    // 3. Clear any error messages
+    hideError();
+    
+    // 4. Reset file input
+    const fileInput = document.getElementById('file-input');
+    if (fileInput) {
+        fileInput.value = '';
     }
     
-    // Show main data viewer and upload section
+    // 5. Hide loading states and ensure buttons are enabled
+    hideLoading();
+    if (saveToDbButton) saveToDbButton.disabled = false;
+    if (resetDbButton) resetDbButton.disabled = false;
+    if (exportButton) exportButton.disabled = false;
+    if (checkDuplicatesButton) checkDuplicatesButton.disabled = false;
+    
+    // 6. Close any open modals
+    const duplicateModal = document.getElementById('duplicate-checker-modal');
+    if (duplicateModal) {
+        duplicateModal.style.display = 'none';
+    }
+    
+    // Show the main transaction/financial management sections
     const dataViewer = document.getElementById('data-viewer');
     const uploadSection = document.querySelector('.upload-section');
     
     if (dataViewer) dataViewer.style.display = 'block';
     if (uploadSection) uploadSection.style.display = 'block';
+    if (transactionSummarySection) transactionSummarySection.style.display = 'block';
     
-    // Reload and show transaction summary from database
+    // 7. Refresh summaries to ensure latest data (including any new distribution costs)
+    console.log('Refreshing weekly summaries...');
     await loadAndDisplaySummaries();
+    
+    console.log('Competition Accounts view refreshed successfully');
 }
 
 /**
@@ -1138,8 +1164,6 @@ async function showCompetitionAccountsView() {
  */
 async function showPresentationNightView() {
     console.log('showPresentationNightView called');
-    console.log('presentationNightView:', presentationNightView);
-    console.log('presentationNightSection:', presentationNightSection);
     
     // Hide other sections
     const dataViewer = document.getElementById('data-viewer');
@@ -1160,13 +1184,10 @@ async function showPresentationNightView() {
         if (presentationNightView) {
             try {
                 console.log('Initializing presentation night view...');
-                // Initialize the view (this renders everything including costs manager)
                 presentationNightView.initialize('presentation-night-container');
-                
                 console.log('Presentation Night view initialized successfully');
             } catch (error) {
                 console.error('Error showing Presentation Night view:', error);
-                console.error('Error stack:', error.stack);
                 alert('Failed to load Presentation Night view. Please try again.');
             }
         } else {

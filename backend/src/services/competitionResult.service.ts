@@ -511,13 +511,13 @@ export class CompetitionResultService {
       throw new Error('Finishing position is required');
     }
 
-    if (!dto.playerName || dto.playerName.trim() === '') {
-      throw new Error('Player name is required and cannot be empty');
-    }
-
     // Validate positive finishing position
     if (dto.finishingPosition <= 0) {
       throw new Error('Finishing position must be a positive integer');
+    }
+
+    if (!dto.playerName || dto.playerName.trim() === '') {
+      throw new Error('Player name is required and cannot be empty');
     }
 
     // Validate non-negative swindle money

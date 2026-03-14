@@ -28,7 +28,7 @@ export class CompetitionService {
       `INSERT INTO competitions (name, date, type, season_id, description, prize_structure)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING id, name, date, type, season_id as "seasonId", description, 
-                 prize_structure as "prizeStructure", 
+                 prize_structure as "prizeStructure", finished,
                  created_at as "createdAt", updated_at as "updatedAt"`,
       [dto.name, dto.date, dto.type, dto.seasonId, dto.description || '', dto.prizeStructure || '']
     );
@@ -38,23 +38,34 @@ export class CompetitionService {
 
   /**
    * Get all competitions ordered by date
-   * Optionally filter by seasonId
+   * Optionally filter by seasonId and finished status
    */
-  async getAllCompetitions(seasonId?: number): Promise<Competition[]> {
+  async getAllCompetitions(options?: { seasonId?: number; finished?: boolean }): Promise<Competition[]> {
     let query = `SELECT c.id, c.name, c.date, c.type, c.season_id as "seasonId", c.description, 
-                        c.prize_structure as "prizeStructure", 
+                        c.prize_structure as "prizeStructure", c.finished,
                         c.created_at as "createdAt", c.updated_at as "updatedAt",
                         COUNT(cr.id)::int as "resultCount"
                  FROM competitions c
                  LEFT JOIN competition_results cr ON c.id = cr.competition_id`;
     const params: any[] = [];
+    const whereClauses: string[] = [];
+    let paramIndex = 1;
 
-    if (seasonId !== undefined) {
-      query += ' WHERE c.season_id = $1';
-      params.push(seasonId);
+    if (options?.seasonId !== undefined) {
+      whereClauses.push(`c.season_id = $${paramIndex++}`);
+      params.push(options.seasonId);
     }
 
-    query += ' GROUP BY c.id, c.name, c.date, c.type, c.season_id, c.description, c.prize_structure, c.created_at, c.updated_at';
+    if (options?.finished !== undefined) {
+      whereClauses.push(`c.finished = $${paramIndex++}`);
+      params.push(options.finished);
+    }
+
+    if (whereClauses.length > 0) {
+      query += ' WHERE ' + whereClauses.join(' AND ');
+    }
+
+    query += ' GROUP BY c.id, c.name, c.date, c.type, c.season_id, c.description, c.prize_structure, c.finished, c.created_at, c.updated_at';
     query += ' ORDER BY c.date DESC';
 
     const result = await this.db.query<Competition>(query, params);
@@ -68,7 +79,7 @@ export class CompetitionService {
   async getCompetitionById(id: number): Promise<Competition | null> {
     const result = await this.db.query<Competition>(
       `SELECT id, name, date, type, season_id as "seasonId", description, 
-              prize_structure as "prizeStructure", 
+              prize_structure as "prizeStructure", finished,
               created_at as "createdAt", updated_at as "updatedAt"
        FROM competitions 
        WHERE id = $1`,
@@ -135,6 +146,15 @@ export class CompetitionService {
       values.push(updates.prizeStructure);
     }
 
+    if (updates.finished !== undefined) {
+      // Validate finished is boolean
+      if (typeof updates.finished !== 'boolean') {
+        throw new Error('Finished status must be a boolean value');
+      }
+      fields.push(`finished = $${paramIndex++}`);
+      values.push(updates.finished);
+    }
+
     if (fields.length === 0) {
       throw new Error('No fields to update');
     }
@@ -150,7 +170,7 @@ export class CompetitionService {
        SET ${fields.join(', ')}
        WHERE id = $${paramIndex}
        RETURNING id, name, date, type, season_id as "seasonId", description, 
-                 prize_structure as "prizeStructure", 
+                 prize_structure as "prizeStructure", finished,
                  created_at as "createdAt", updated_at as "updatedAt"`,
       values
     );

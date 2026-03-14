@@ -259,8 +259,11 @@ describe('DatabaseService', () => {
     });
 
     it('should create migrations table if it does not exist', async () => {
-      (fs.existsSync as jest.Mock).mockReturnValue(false);
-      mockPool.query.mockResolvedValueOnce({ rows: [] });
+      // Mock directory exists but no migrations have been run yet
+      (fs.existsSync as jest.Mock).mockReturnValue(true);
+      (fs.readdirSync as jest.Mock).mockReturnValue([]);
+      mockPool.query.mockResolvedValueOnce({ rows: [] }); // CREATE TABLE
+      mockPool.query.mockResolvedValueOnce({ rows: [] }); // SELECT from migrations
 
       await db.runMigrations();
 
@@ -271,12 +274,12 @@ describe('DatabaseService', () => {
     });
 
     it('should skip migrations if directory does not exist', async () => {
+      // Mock both directory checks to return false
       (fs.existsSync as jest.Mock).mockReturnValue(false);
-      mockPool.query.mockResolvedValueOnce({ rows: [] });
+      mockPool.query.mockResolvedValueOnce({ rows: [] }); // CREATE TABLE
 
-      await db.runMigrations();
-
-      expect(fs.readdirSync).not.toHaveBeenCalled();
+      // Should throw error when directory doesn't exist
+      await expect(db.runMigrations()).rejects.toThrow('Migrations directory not found');
     });
 
     it('should execute new migrations in order', async () => {

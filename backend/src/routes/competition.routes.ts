@@ -104,7 +104,7 @@ router.post('/', validateCompetitionCreate, async (req: Request, res: Response, 
  * /api/competitions:
  *   get:
  *     summary: Get all competitions
- *     description: Retrieve all competition records ordered by date, optionally filtered by season
+ *     description: Retrieve all competition records ordered by date, optionally filtered by season and finished status
  *     tags: [Competitions]
  *     parameters:
  *       - in: query
@@ -113,6 +113,12 @@ router.post('/', validateCompetitionCreate, async (req: Request, res: Response, 
  *           type: integer
  *         description: Filter competitions by presentation season ID
  *         example: 1
+ *       - in: query
+ *         name: finished
+ *         schema:
+ *           type: boolean
+ *         description: Filter competitions by finished status (true for finished, false for active)
+ *         example: false
  *     responses:
  *       200:
  *         description: Competitions retrieved successfully
@@ -151,7 +157,28 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       });
     }
 
-    const competitions = await competitionService.getAllCompetitions(seasonId);
+    // Parse finished query parameter if provided
+    let finished: boolean | undefined = undefined;
+    if (req.query.finished !== undefined) {
+      const finishedParam = req.query.finished as string;
+      if (finishedParam === 'true') {
+        finished = true;
+      } else if (finishedParam === 'false') {
+        finished = false;
+      } else {
+        return res.status(400).json({
+          error: 'Validation failed',
+          details: ['finished must be "true" or "false"']
+        });
+      }
+    }
+
+    // Build options object
+    const options: { seasonId?: number; finished?: boolean } = {};
+    if (seasonId !== undefined) options.seasonId = seasonId;
+    if (finished !== undefined) options.finished = finished;
+
+    const competitions = await competitionService.getAllCompetitions(Object.keys(options).length > 0 ? options : undefined);
 
     res.status(200).json({
       competitions,
@@ -207,6 +234,9 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
  *               prizeStructure:
  *                 type: string
  *                 example: "1st: £60, 2nd: £40"
+ *               finished:
+ *                 type: boolean
+ *                 example: true
  *     responses:
  *       200:
  *         description: Competition updated successfully
@@ -253,6 +283,7 @@ router.put('/:id', validateNumericId, validateCompetitionUpdate, async (req: Req
     if (req.body.seasonId !== undefined) updates.seasonId = req.body.seasonId;
     if (req.body.description !== undefined) updates.description = req.body.description;
     if (req.body.prizeStructure !== undefined) updates.prizeStructure = req.body.prizeStructure;
+    if (req.body.finished !== undefined) updates.finished = req.body.finished;
 
     const competition = await competitionService.updateCompetition(id, updates);
 

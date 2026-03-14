@@ -57,7 +57,7 @@ describe('Swindle Money Routes Integration', () => {
       const resultData = await db.query(
         `INSERT INTO competition_results (competition_id, finishing_position, player_name, gross_score, handicap, nett_score, entry_paid, swindle_money_paid)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-        [testCompetitionId, 1, 'John SMITH', 85, 12, 73, true, null]
+        [testCompetitionId, 1, 'John SMITH', 85, 12, 73, 1, null]
       );
       const resultId = resultData.rows[0].id;
 
@@ -91,7 +91,7 @@ describe('Swindle Money Routes Integration', () => {
       const resultData = await db.query(
         `INSERT INTO competition_results (competition_id, finishing_position, player_name, gross_score, handicap, nett_score, entry_paid, swindle_money_paid)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-        [testCompetitionId, 1, 'JOHN SMITH', 85, 12, 73, true, null]
+        [testCompetitionId, 1, 'JOHN SMITH', 85, 12, 73, 1, null]
       );
       const resultId = resultData.rows[0].id;
 
@@ -157,14 +157,14 @@ describe('Swindle Money Routes Integration', () => {
       await db.query(
         `INSERT INTO competition_results (competition_id, finishing_position, player_name, gross_score, handicap, nett_score, entry_paid, swindle_money_paid)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [olderCompetitionId, 1, 'Jane DOE', 88, 15, 73, true, null]
+        [olderCompetitionId, 1, 'Jane DOE', 88, 15, 73, 1, null]
       );
 
       // Create result in newer competition (unpaid) - this should be selected
       const newerResultData = await db.query(
         `INSERT INTO competition_results (competition_id, finishing_position, player_name, gross_score, handicap, nett_score, entry_paid, swindle_money_paid)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-        [newerCompetitionId, 1, 'Jane DOE', 90, 16, 74, true, null]
+        [newerCompetitionId, 1, 'Jane DOE', 90, 16, 74, 1, null]
       );
       const newerResultId = newerResultData.rows[0].id;
 
@@ -209,14 +209,14 @@ describe('Swindle Money Routes Integration', () => {
       await db.query(
         `INSERT INTO competition_results (competition_id, finishing_position, player_name, gross_score, handicap, nett_score, entry_paid, swindle_money_paid)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [olderCompetitionId, 1, 'Bob JONES', 85, 12, 73, true, 30.00]
+        [olderCompetitionId, 1, 'Bob JONES', 85, 12, 73, 1, 30.00]
       );
 
       // Create result in test competition (unpaid) - this should be selected
       const unpaidResultData = await db.query(
         `INSERT INTO competition_results (competition_id, finishing_position, player_name, gross_score, handicap, nett_score, entry_paid, swindle_money_paid)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-        [testCompetitionId, 1, 'Bob JONES', 88, 15, 73, true, null]
+        [testCompetitionId, 1, 'Bob JONES', 88, 15, 73, 1, null]
       );
       const unpaidResultId = unpaidResultData.rows[0].id;
 
@@ -253,7 +253,7 @@ describe('Swindle Money Routes Integration', () => {
       const resultData = await db.query(
         `INSERT INTO competition_results (competition_id, finishing_position, player_name, gross_score, handicap, nett_score, entry_paid, swindle_money_paid)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-        [testCompetitionId, 1, 'Alice BROWN', 85, 12, 73, true, null]
+        [testCompetitionId, 1, 'Alice BROWN', 85, 12, 73, 1, null]
       );
       const resultId = resultData.rows[0].id;
 
@@ -356,7 +356,7 @@ describe('Swindle Money Routes Integration', () => {
       const resultData = await db.query(
         `INSERT INTO competition_results (competition_id, finishing_position, player_name, gross_score, handicap, nett_score, entry_paid, swindle_money_paid)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-        [testCompetitionId, 1, 'Zero Winner', 85, 12, 73, true, null]
+        [testCompetitionId, 1, 'Zero Winner', 85, 12, 73, 1, null]
       );
       const resultId = resultData.rows[0].id;
 

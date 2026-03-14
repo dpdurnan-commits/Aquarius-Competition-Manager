@@ -66,6 +66,7 @@ export interface Competition {
   seasonId: number;
   description: string;
   prizeStructure: string;
+  finished: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -86,6 +87,12 @@ export interface UpdateCompetitionDTO {
   seasonId?: number;
   description?: string;
   prizeStructure?: string;
+  finished?: boolean;
+}
+
+export interface GetCompetitionsOptions {
+  seasonId?: number;
+  finished?: boolean;
 }
 
 export interface CompetitionWithResults extends Competition {

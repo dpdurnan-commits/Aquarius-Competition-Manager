@@ -413,12 +413,32 @@ export class TransactionSummaryView {
         ? summary.toDate.toISOString() 
         : new Date(summary.toDate).toISOString();
       
-      // Add click handler to open drill-down view
+      // Add click handler to show transactions inline instead of modal
       if (this.weeklyDrillDownView) {
         const handleClick = () => {
-          const weekStart = new Date(row.dataset.weekStart);
-          const weekEnd = new Date(row.dataset.weekEnd);
-          this.weeklyDrillDownView.show(weekStart, weekEnd);
+          try {
+            const weekStart = new Date(row.dataset.weekStart);
+            const weekEnd = new Date(row.dataset.weekEnd);
+            
+            // Validate dates
+            if (isNaN(weekStart.getTime()) || isNaN(weekEnd.getTime())) {
+              console.error('TransactionSummaryView: Invalid dates for weekly drill-down', {
+                weekStart: row.dataset.weekStart,
+                weekEnd: row.dataset.weekEnd
+              });
+              return;
+            }
+            
+            // Check if showInline method exists
+            if (typeof this.weeklyDrillDownView.showInline !== 'function') {
+              console.error('TransactionSummaryView: weeklyDrillDownView.showInline is not a function');
+              return;
+            }
+            
+            this.weeklyDrillDownView.showInline(weekStart, weekEnd);
+          } catch (error) {
+            console.error('TransactionSummaryView: Error in handleClick:', error);
+          }
         };
         
         row.onclick = handleClick;

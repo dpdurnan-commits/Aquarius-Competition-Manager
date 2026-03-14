@@ -12,7 +12,8 @@ describe('CompetitionList', () => {
   beforeEach(() => {
     // Create mock API client
     mockApiClient = {
-      request: jest.fn()
+      request: jest.fn(),
+      getAllCompetitions: jest.fn()
     };
 
     // Create instance
@@ -49,9 +50,8 @@ describe('CompetitionList', () => {
         { id: 2, name: 'Competition 2', date: '2024-02-20', type: 'doubles', seasonId: 2 }
       ];
 
-      mockApiClient.request
-        .mockResolvedValueOnce({ seasons: mockSeasons })
-        .mockResolvedValueOnce({ competitions: mockCompetitions });
+      mockApiClient.request.mockResolvedValueOnce({ seasons: mockSeasons });
+      mockApiClient.getAllCompetitions.mockResolvedValueOnce(mockCompetitions);
 
       await competitionList.initialize();
 
@@ -101,29 +101,43 @@ describe('CompetitionList', () => {
         { id: 2, name: 'Competition 2', seasonId: 2 }
       ];
 
-      mockApiClient.request.mockResolvedValue({ competitions: mockCompetitions });
+      mockApiClient.getAllCompetitions = jest.fn().mockResolvedValue(mockCompetitions);
 
       const result = await competitionList.loadCompetitions();
 
-      expect(mockApiClient.request).toHaveBeenCalledWith('/api/competitions', {
-        method: 'GET'
-      });
+      expect(mockApiClient.getAllCompetitions).toHaveBeenCalledWith({ finished: false });
       expect(result).toEqual(mockCompetitions);
       expect(competitionList.competitions).toEqual(mockCompetitions);
       expect(competitionList.filteredCompetitions).toEqual(mockCompetitions);
     });
 
-    test('should fetch competitions filtered by seasonId', async () => {
+    test('should fetch competitions filtered by seasonId and finished status', async () => {
       const mockCompetitions = [
         { id: 1, name: 'Competition 1', seasonId: 1 }
       ];
 
-      mockApiClient.request.mockResolvedValue({ competitions: mockCompetitions });
+      mockApiClient.getAllCompetitions = jest.fn().mockResolvedValue(mockCompetitions);
 
       await competitionList.loadCompetitions(1);
 
-      expect(mockApiClient.request).toHaveBeenCalledWith('/api/competitions?seasonId=1', {
-        method: 'GET'
+      expect(mockApiClient.getAllCompetitions).toHaveBeenCalledWith({ finished: false, seasonId: 1 });
+    });
+
+    test('should exclude finished competitions from results', async () => {
+      const mockCompetitions = [
+        { id: 1, name: 'Active Competition', seasonId: 1, finished: false },
+        // Finished competitions should not be returned by API when finished: false is passed
+      ];
+
+      mockApiClient.getAllCompetitions = jest.fn().mockResolvedValue(mockCompetitions);
+
+      await competitionList.loadCompetitions();
+
+      expect(mockApiClient.getAllCompetitions).toHaveBeenCalledWith({ finished: false });
+      expect(competitionList.competitions).toEqual(mockCompetitions);
+      // All returned competitions should be unfinished
+      competitionList.competitions.forEach(comp => {
+        expect(comp.finished).not.toBe(true);
       });
     });
 
@@ -133,12 +147,29 @@ describe('CompetitionList', () => {
         { id: 2, name: 'Competition 2', seasonId: 2 }
       ];
 
-      mockApiClient.request.mockResolvedValue({ competitions: mockCompetitions });
+      mockApiClient.getAllCompetitions = jest.fn().mockResolvedValue(mockCompetitions);
 
       competitionList.currentSeasonFilter = 1;
       await competitionList.loadCompetitions();
 
       expect(competitionList.filteredCompetitions).toEqual([mockCompetitions[0]]);
+    });
+
+    test('should handle empty active competitions list', async () => {
+      mockApiClient.getAllCompetitions = jest.fn().mockResolvedValue([]);
+
+      await competitionList.loadCompetitions();
+
+      expect(mockApiClient.getAllCompetitions).toHaveBeenCalledWith({ finished: false });
+      expect(competitionList.competitions).toEqual([]);
+      expect(competitionList.filteredCompetitions).toEqual([]);
+    });
+
+    test('should wrap API errors', async () => {
+      const apiError = new Error('Network error');
+      mockApiClient.getAllCompetitions = jest.fn().mockRejectedValue(apiError);
+
+      await expect(competitionList.loadCompetitions()).rejects.toThrow('Failed to load competitions');
     });
   });
 
@@ -345,7 +376,7 @@ describe('CompetitionList', () => {
 
       const emptyState = document.querySelector('.empty-state');
       expect(emptyState).toBeTruthy();
-      expect(emptyState.textContent).toBe('No competitions found');
+      expect(emptyState.textContent).toBe('No active competitions found');
     });
 
     test('should highlight selected competition', () => {
@@ -436,23 +467,22 @@ describe('CompetitionList', () => {
 
       const modal = document.querySelector('.modal');
       expect(modal).toBeTruthy();
-      expect(modal.querySelector('h3').textContent).toBe('Create New Competition');
+      expect(modal.querySelector('h2').textContent).toBe('Create New Competition');
     });
 
     test('should render all form fields in modal', () => {
       competitionList.showNewCompetitionModal();
 
-      expect(document.getElementById('competition-name-input')).toBeTruthy();
-      expect(document.getElementById('competition-date-input')).toBeTruthy();
-      expect(document.getElementById('competition-type-input')).toBeTruthy();
-      expect(document.getElementById('competition-season-input')).toBeTruthy();
-      expect(document.getElementById('competition-desc-input')).toBeTruthy();
+      expect(document.getElementById('new-competition-name-input')).toBeTruthy();
+      expect(document.getElementById('new-competition-date-input')).toBeTruthy();
+      expect(document.getElementById('new-competition-type-input')).toBeTruthy();
+      expect(document.getElementById('new-competition-season-input')).toBeTruthy();
     });
 
     test('should pre-select active season in modal', () => {
       competitionList.showNewCompetitionModal();
 
-      const seasonSelect = document.getElementById('competition-season-input');
+      const seasonSelect = document.getElementById('new-competition-season-input');
       expect(seasonSelect.value).toBe('1');
     });
 
@@ -496,11 +526,10 @@ describe('CompetitionList', () => {
 
       competitionList.showNewCompetitionModal();
 
-      document.getElementById('competition-name-input').value = 'New Competition';
-      document.getElementById('competition-date-input').value = '2024-03-15';
-      document.getElementById('competition-type-input').value = 'singles';
-      document.getElementById('competition-season-input').value = '1';
-      document.getElementById('competition-desc-input').value = 'Test';
+      document.getElementById('new-competition-name-input').value = 'New Competition';
+      document.getElementById('new-competition-date-input').value = '2024-03-15';
+      document.getElementById('new-competition-type-input').value = 'singles';
+      document.getElementById('new-competition-season-input').value = '1';
 
       const createBtn = document.querySelector('.modal-footer .btn-primary');
       await createBtn.click();
@@ -514,10 +543,10 @@ describe('CompetitionList', () => {
     test('should show error when name is missing', async () => {
       competitionList.showNewCompetitionModal();
 
-      document.getElementById('competition-name-input').value = '';
-      document.getElementById('competition-date-input').value = '2024-03-15';
-      document.getElementById('competition-type-input').value = 'singles';
-      document.getElementById('competition-season-input').value = '1';
+      document.getElementById('new-competition-name-input').value = '';
+      document.getElementById('new-competition-date-input').value = '2024-03-15';
+      document.getElementById('new-competition-type-input').value = 'singles';
+      document.getElementById('new-competition-season-input').value = '1';
 
       const createBtn = document.querySelector('.modal-footer .btn-primary');
       await createBtn.click();
@@ -531,10 +560,10 @@ describe('CompetitionList', () => {
     test('should show error when date is missing', async () => {
       competitionList.showNewCompetitionModal();
 
-      document.getElementById('competition-name-input').value = 'Test';
-      document.getElementById('competition-date-input').value = '';
-      document.getElementById('competition-type-input').value = 'singles';
-      document.getElementById('competition-season-input').value = '1';
+      document.getElementById('new-competition-name-input').value = 'Test';
+      document.getElementById('new-competition-date-input').value = '';
+      document.getElementById('new-competition-type-input').value = 'singles';
+      document.getElementById('new-competition-season-input').value = '1';
 
       const createBtn = document.querySelector('.modal-footer .btn-primary');
       await createBtn.click();
@@ -547,10 +576,10 @@ describe('CompetitionList', () => {
     test('should show error when season is not selected', async () => {
       competitionList.showNewCompetitionModal();
 
-      document.getElementById('competition-name-input').value = 'Test';
-      document.getElementById('competition-date-input').value = '2024-03-15';
-      document.getElementById('competition-type-input').value = 'singles';
-      document.getElementById('competition-season-input').value = '';
+      document.getElementById('new-competition-name-input').value = 'Test';
+      document.getElementById('new-competition-date-input').value = '2024-03-15';
+      document.getElementById('new-competition-type-input').value = 'singles';
+      document.getElementById('new-competition-season-input').value = '';
 
       const createBtn = document.querySelector('.modal-footer .btn-primary');
       await createBtn.click();
@@ -617,9 +646,8 @@ describe('CompetitionList', () => {
       const mockSeasons = [{ id: 1, name: 'Season: Winter 25-Summer 26' }];
       const mockCompetitions = [{ id: 1, name: 'Competition 1', seasonId: 1 }];
 
-      mockApiClient.request
-        .mockResolvedValueOnce({ seasons: mockSeasons })
-        .mockResolvedValueOnce({ competitions: mockCompetitions });
+      mockApiClient.request.mockResolvedValueOnce({ seasons: mockSeasons });
+      mockApiClient.getAllCompetitions.mockResolvedValueOnce(mockCompetitions);
 
       await competitionList.refresh();
 

@@ -103,7 +103,7 @@ describe('Performance Tests - Task 20.1', () => {
             grossScore: 70 + j,
             handicap: 10 + (j % 20),
             nettScore: 60 + j,
-            entryPaid: true,
+            entryPaid: 1,
             swindleMoneyPaid: j < 3 ? 50 - (j * 10) : 0,
           });
         }
@@ -125,7 +125,7 @@ describe('Performance Tests - Task 20.1', () => {
 
       // Test filtered query performance
       const filterStart = Date.now();
-      const season1Comps = await competitionService.getAllCompetitions(season1.id);
+      const season1Comps = await competitionService.getAllCompetitions({ seasonId: season1.id });
       const filterTime = Date.now() - filterStart;
 
       console.log(`Filtered competitions by season in ${filterTime}ms`);

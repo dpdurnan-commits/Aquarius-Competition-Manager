@@ -60,7 +60,7 @@ describe('Competition Result Routes Integration', () => {
         grossScore: 85,
         handicap: 12,
         nettScore: 73,
-        entryPaid: true,
+        entryPaid: 1,
         swindleMoneyPaid: 50.00
       };
 
@@ -78,7 +78,7 @@ describe('Competition Result Routes Integration', () => {
         grossScore: 85,
         handicap: 12,
         nettScore: 73,
-        entryPaid: true,
+        entryPaid: '1.00',
         swindleMoneyPaid: '50.00'
       });
       expect(response.body.result).toHaveProperty('id');
@@ -444,7 +444,7 @@ describe('Competition Result Routes Integration', () => {
       const result = await db.query(
         `INSERT INTO competition_results (competition_id, finishing_position, player_name, gross_score, handicap, nett_score, entry_paid, swindle_money_paid)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-        [testCompetitionId, 1, 'John SMITH', 85, 12, 73, false, 0]
+        [testCompetitionId, 1, 'John SMITH', 85, 12, 73, 0, 0]
       );
       testResultId = result.rows[0].id;
     });
@@ -456,7 +456,7 @@ describe('Competition Result Routes Integration', () => {
         grossScore: 86,
         handicap: 13,
         nettScore: 73,
-        entryPaid: true,
+        entryPaid: 1,
         swindleMoneyPaid: 50.00
       };
 
@@ -473,14 +473,14 @@ describe('Competition Result Routes Integration', () => {
         grossScore: 86,
         handicap: 13,
         nettScore: 73,
-        entryPaid: true,
+        entryPaid: '1.00',
         swindleMoneyPaid: '50.00'
       });
     });
 
     it('should update only specified fields', async () => {
       const updates = {
-        entryPaid: true,
+        entryPaid: 1,
         swindleMoneyPaid: 30.00
       };
 
@@ -494,7 +494,7 @@ describe('Competition Result Routes Integration', () => {
         finishingPosition: 1, // Unchanged
         playerName: 'John SMITH', // Unchanged
         grossScore: 85, // Unchanged
-        entryPaid: true, // Updated
+        entryPaid: '1.00', // Updated
         swindleMoneyPaid: '30.00' // Updated
       });
     });
@@ -570,7 +570,7 @@ describe('Competition Result Routes Integration', () => {
 
     it('should return 404 for non-existent result', async () => {
       const updates = {
-        entryPaid: true
+        entryPaid: 1
       };
 
       const response = await request(app)

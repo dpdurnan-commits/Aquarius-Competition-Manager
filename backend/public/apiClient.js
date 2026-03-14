@@ -492,15 +492,31 @@ export class APIClient {
   }
 
   /**
-   * Get all competitions, optionally filtered by season
-   * @param {number} [seasonId] - Optional season ID to filter by
+   * Get all competitions, optionally filtered by season and finished status
+   * @param {Object|number} [options] - Filter options object or legacy seasonId number
+   * @param {number} [options.seasonId] - Optional season ID to filter by
+   * @param {boolean} [options.finished] - Optional finished status to filter by
    * @returns {Promise<Object[]>} - Array of competitions
    */
-  async getAllCompetitions(seasonId = null) {
+  async getAllCompetitions(options = null) {
     try {
-      const endpoint = seasonId 
-        ? `/api/competitions?season_id=${seasonId}`
-        : '/api/competitions';
+      // Handle legacy seasonId parameter for backward compatibility
+      let queryParams = {};
+      if (typeof options === 'number') {
+        queryParams.seasonId = options;
+      } else if (options && typeof options === 'object') {
+        if (options.seasonId) queryParams.seasonId = options.seasonId;
+        if (typeof options.finished === 'boolean') queryParams.finished = options.finished;
+      }
+      
+      // Build query string
+      const queryString = Object.keys(queryParams).length > 0 
+        ? '?' + Object.entries(queryParams)
+            .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+            .join('&')
+        : '';
+      
+      const endpoint = `/api/competitions${queryString}`;
       
       const result = await this.request(endpoint, {
         method: 'GET'

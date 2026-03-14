@@ -4,8 +4,9 @@
  */
 
 export class CompetitionList {
-  constructor(apiClient) {
+  constructor(apiClient, mode = 'selector') {
     this.apiClient = apiClient;
+    this.mode = mode; // 'selector' for transaction flagging, 'management' for competition management
     
     // State
     this.competitions = [];
@@ -13,6 +14,7 @@ export class CompetitionList {
     this.selectedCompetitionId = null;
     this.currentSeasonFilter = null;
     this.seasons = [];
+    this.showFinished = false; // For management mode
     
     // DOM Elements
     this.container = null;
@@ -30,6 +32,9 @@ export class CompetitionList {
     this.handleCreateCompetition = this.handleCreateCompetition.bind(this);
     this.handleDeleteCompetition = this.handleDeleteCompetition.bind(this);
     this.handleCloseModal = this.handleCloseModal.bind(this);
+    this.handleViewToggle = this.handleViewToggle.bind(this);
+    this.handleMarkFinished = this.handleMarkFinished.bind(this);
+    this.handleUnmarkFinished = this.handleUnmarkFinished.bind(this);
   }
 
   /**
@@ -71,15 +76,23 @@ export class CompetitionList {
    */
   async loadCompetitions(seasonId = null) {
     try {
-      const endpoint = seasonId 
-        ? `/api/competitions?seasonId=${seasonId}`
-        : '/api/competitions';
+      let options = {};
       
-      const result = await this.apiClient.request(endpoint, {
-        method: 'GET'
-      });
+      if (this.mode === 'selector') {
+        // For selector mode, always filter to show only unfinished competitions
+        options.finished = false;
+      } else if (this.mode === 'management') {
+        // For management mode, filter based on showFinished toggle
+        options.finished = this.showFinished;
+      }
+      
+      if (seasonId) {
+        options.seasonId = seasonId;
+      }
+      
+      const competitions = await this.apiClient.getAllCompetitions(options);
 
-      this.competitions = result.competitions || [];
+      this.competitions = competitions || [];
       
       // Apply current filter if set
       if (this.currentSeasonFilter) {
@@ -223,6 +236,43 @@ export class CompetitionList {
     const header = document.createElement('div');
     header.className = 'competition-list-header';
 
+    // Add toggle control for management mode
+    if (this.mode === 'management') {
+      const toggleSection = document.createElement('div');
+      toggleSection.className = 'view-toggle-container';
+      
+      const activeRadio = document.createElement('input');
+      activeRadio.type = 'radio';
+      activeRadio.id = 'view-active-competitions';
+      activeRadio.name = 'competition-view';
+      activeRadio.value = 'active';
+      activeRadio.checked = !this.showFinished;
+      activeRadio.addEventListener('change', () => this.handleViewToggle(false));
+      
+      const activeLabel = document.createElement('label');
+      activeLabel.htmlFor = 'view-active-competitions';
+      activeLabel.textContent = 'Active Competitions';
+      
+      const finishedRadio = document.createElement('input');
+      finishedRadio.type = 'radio';
+      finishedRadio.id = 'view-finished-competitions';
+      finishedRadio.name = 'competition-view';
+      finishedRadio.value = 'finished';
+      finishedRadio.checked = this.showFinished;
+      finishedRadio.addEventListener('change', () => this.handleViewToggle(true));
+      
+      const finishedLabel = document.createElement('label');
+      finishedLabel.htmlFor = 'view-finished-competitions';
+      finishedLabel.textContent = 'Finished Competitions';
+      
+      toggleSection.appendChild(activeRadio);
+      toggleSection.appendChild(activeLabel);
+      toggleSection.appendChild(finishedRadio);
+      toggleSection.appendChild(finishedLabel);
+      
+      header.appendChild(toggleSection);
+    }
+
     // Season filter dropdown
     const filterSection = document.createElement('div');
     filterSection.className = 'filter-section';
@@ -273,7 +323,10 @@ export class CompetitionList {
       // Empty state
       const emptyState = document.createElement('div');
       emptyState.className = 'empty-state';
-      emptyState.textContent = 'No competitions found';
+      const emptyMessage = this.mode === 'management' && this.showFinished 
+        ? 'No finished competitions found' 
+        : 'No active competitions found';
+      emptyState.textContent = emptyMessage;
       this.competitionListEl.appendChild(emptyState);
     } else {
       // Render competition items
@@ -300,6 +353,11 @@ export class CompetitionList {
     item.className = 'competition-item';
     item.dataset.competitionId = competition.id;
     
+    // Add finished status class
+    if (competition.finished) {
+      item.classList.add('finished-competition');
+    }
+    
     // Highlight if selected
     if (this.selectedCompetitionId === competition.id) {
       item.classList.add('selected');
@@ -313,6 +371,15 @@ export class CompetitionList {
     const name = document.createElement('div');
     name.className = 'competition-name';
     name.textContent = competition.name;
+    
+    // Add finished status indicator
+    if (competition.finished) {
+      const statusIndicator = document.createElement('span');
+      statusIndicator.className = 'status-indicator finished';
+      statusIndicator.textContent = ' (Finished)';
+      name.appendChild(statusIndicator);
+    }
+    
     info.appendChild(name);
 
     const details = document.createElement('div');
@@ -340,10 +407,11 @@ export class CompetitionList {
     info.appendChild(details);
     item.appendChild(info);
 
-    // Action buttons (shown on hover)
+    // Action buttons
     const actions = document.createElement('div');
     actions.className = 'competition-actions';
 
+    // Delete button (always present)
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'btn-icon btn-delete';
     deleteBtn.innerHTML = '🗑️';
@@ -353,6 +421,29 @@ export class CompetitionList {
       this.handleDeleteCompetition(competition.id);
     });
     actions.appendChild(deleteBtn);
+
+    // Add finished status button for management mode
+    if (this.mode === 'management') {
+      const finishedBtn = document.createElement('button');
+      if (competition.finished) {
+        finishedBtn.className = 'btn-icon unmark-finished-button';
+        finishedBtn.innerHTML = '↩️';
+        finishedBtn.title = 'Unmark as finished';
+        finishedBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.handleUnmarkFinished(competition.id);
+        });
+      } else {
+        finishedBtn.className = 'btn-icon mark-finished-button';
+        finishedBtn.innerHTML = '✅';
+        finishedBtn.title = 'Mark as finished';
+        finishedBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.handleMarkFinished(competition.id);
+        });
+      }
+      actions.appendChild(finishedBtn);
+    }
 
     item.appendChild(actions);
 
@@ -742,5 +833,87 @@ export class CompetitionList {
     if (this.container) {
       this.container.innerHTML = '';
     }
+  }
+
+  /**
+   * Handle toggle between active/finished view (management mode only)
+   */
+  async handleViewToggle(showFinished) {
+    if (this.mode !== 'management') return;
+    
+    this.showFinished = showFinished;
+    await this.loadCompetitions(this.currentSeasonFilter);
+    this.render();
+  }
+
+  /**
+   * Handle marking competition as finished (management mode only)
+   */
+  async handleMarkFinished(competitionId) {
+    if (this.mode !== 'management') return;
+    
+    try {
+      await this.apiClient.updateCompetition(competitionId, { finished: true });
+      
+      // Refresh the list
+      await this.loadCompetitions(this.currentSeasonFilter);
+      this.render();
+      
+      // Show success message
+      this.showMessage('Competition marked as finished successfully.', 'success');
+      
+    } catch (error) {
+      console.error('Error marking competition as finished:', error);
+      this.showError('Failed to mark competition as finished.');
+    }
+  }
+
+  /**
+   * Handle unmarking competition as finished (management mode only)
+   */
+  async handleUnmarkFinished(competitionId) {
+    if (this.mode !== 'management') return;
+    
+    try {
+      await this.apiClient.updateCompetition(competitionId, { finished: false });
+      
+      // Refresh the list
+      await this.loadCompetitions(this.currentSeasonFilter);
+      this.render();
+      
+      // Show success message
+      this.showMessage('Competition unmarked as finished successfully.', 'success');
+      
+    } catch (error) {
+      console.error('Error unmarking competition as finished:', error);
+      this.showError('Failed to unmark competition as finished.');
+    }
+  }
+
+  /**
+   * Show a temporary success message
+   */
+  showMessage(message, type = 'info') {
+    // Create or update message element
+    let messageEl = document.getElementById('competition-list-message');
+    if (!messageEl) {
+      messageEl = document.createElement('div');
+      messageEl.id = 'competition-list-message';
+      messageEl.className = 'message';
+      
+      // Insert at the top of the container
+      if (this.container) {
+        this.container.insertBefore(messageEl, this.container.firstChild);
+      }
+    }
+    
+    messageEl.textContent = message;
+    messageEl.className = `message message-${type}`;
+    messageEl.style.display = 'block';
+    
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+      messageEl.style.display = 'none';
+    }, 3000);
   }
 }

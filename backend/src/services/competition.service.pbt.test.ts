@@ -41,7 +41,13 @@ describe('CompetitionService - Property-Based Tests', () => {
           // Generate valid competition data with varying types
           fc.record({
             name: fc.string({ minLength: 1, maxLength: 100 }),
-            date: fc.date({ min: new Date('2000-01-01'), max: new Date('2099-12-31') }).map(d => d.toISOString().split('T')[0]),
+            date: fc.date({ min: new Date('2000-01-01'), max: new Date('2099-12-31') }).map(d => {
+              // Ensure valid date before converting to ISO string
+              if (isNaN(d.getTime())) {
+                return '2024-01-01'; // fallback to valid date
+              }
+              return d.toISOString().split('T')[0];
+            }),
             type: fc.oneof(
               fc.constant('singles'),
               fc.constant('doubles'),
@@ -227,7 +233,13 @@ describe('CompetitionService - Property-Based Tests', () => {
           // Generate only valid types for this test
           fc.record({
             name: fc.string({ minLength: 1, maxLength: 100 }),
-            date: fc.date().map(d => d.toISOString().split('T')[0]),
+            date: fc.date({ min: new Date('2000-01-01'), max: new Date('2099-12-31') }).map(d => {
+              // Ensure valid date before converting to ISO string
+              if (isNaN(d.getTime())) {
+                return '2024-01-01'; // fallback to valid date
+              }
+              return d.toISOString().split('T')[0];
+            }),
             type: fc.constantFrom('singles', 'doubles'),
             seasonId: fc.integer({ min: 1, max: 100 })
           }),
@@ -565,7 +577,13 @@ describe('CompetitionService - Property-Based Tests', () => {
         // Generate competition data with varying season IDs
         fc.record({
           name: fc.string({ minLength: 1, maxLength: 100 }),
-          date: fc.date().map(d => d.toISOString().split('T')[0]),
+          date: fc.date({ min: new Date('2000-01-01'), max: new Date('2099-12-31') }).map(d => {
+            // Ensure valid date before converting to ISO string
+            if (isNaN(d.getTime())) {
+              return '2024-01-01'; // fallback to valid date
+            }
+            return d.toISOString().split('T')[0];
+          }),
           type: fc.constantFrom('singles', 'doubles'),
           seasonId: fc.integer({ min: 1, max: 10000 }),
           description: fc.option(fc.string({ maxLength: 500 }), { nil: undefined }),
@@ -688,7 +706,7 @@ describe('CompetitionService - Property-Based Tests', () => {
         fc.record({
           competitionId: fc.integer({ min: 1, max: 10000 }),
           finishingPosition: fc.integer({ min: 1, max: 100 }),
-          playerName: fc.string({ minLength: 1, maxLength: 100 }),
+          playerName: fc.string({ minLength: 1, maxLength: 100 }).filter(s => s.trim().length > 0),
           grossScore: fc.option(fc.integer({ min: 50, max: 150 }), { nil: undefined }),
           handicap: fc.option(fc.integer({ min: 0, max: 54 }), { nil: undefined }),
           nettScore: fc.option(fc.integer({ min: 50, max: 150 }), { nil: undefined }),
@@ -941,7 +959,13 @@ describe('CompetitionService - Property-Based Tests', () => {
           // Generate competition data with varying season IDs
           fc.record({
             name: fc.string({ minLength: 1, maxLength: 100 }),
-            date: fc.date().map(d => d.toISOString().split('T')[0]),
+            date: fc.date({ min: new Date('2000-01-01'), max: new Date('2099-12-31') }).map(d => {
+              // Ensure valid date before converting to ISO string
+              if (isNaN(d.getTime())) {
+                return '2024-01-01'; // fallback to valid date
+              }
+              return d.toISOString().split('T')[0];
+            }),
             type: fc.constantFrom('singles', 'doubles'),
             seasonId: fc.integer({ min: 1, max: 10000 }),
             description: fc.option(fc.string({ maxLength: 500 }), { nil: undefined }),
