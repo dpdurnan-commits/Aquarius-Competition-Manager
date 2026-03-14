@@ -479,6 +479,9 @@ export class WeeklyDrillDownView {
         window.enhancedRecords = [...this.transactions];
         
         console.log('WeeklyDrillDownView: Temporarily set enhancedRecords to local transactions:', window.enhancedRecords.length);
+        console.log('WeeklyDrillDownView: Looking for recordId:', recordId);
+        console.log('WeeklyDrillDownView: Available transaction IDs:', this.transactions.map(t => t.id));
+        console.log('WeeklyDrillDownView: Record exists in local transactions:', !!this.transactions.find(t => t.id === recordId));
         
         await window.showCompetitionSelectionModal(recordId, mode);
         console.log('WeeklyDrillDownView: Modal completed successfully');

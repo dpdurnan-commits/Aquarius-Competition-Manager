@@ -709,11 +709,15 @@ async function loadCompetitionNames(records) {
 async function showCompetitionSelectionModal(recordId, mode) {
     console.log('showCompetitionSelectionModal: Starting with recordId:', recordId, 'mode:', mode);
     try {
-        // Get the transaction record
-        const record = enhancedRecords.find(r => (r.id || r.sourceRowIndex) === recordId);
+        // Get the transaction record - check both local and global enhancedRecords
+        const recordsToSearch = window.enhancedRecords && window.enhancedRecords.length > 0 ? window.enhancedRecords : enhancedRecords;
+        console.log('showCompetitionSelectionModal: Searching in records array with length:', recordsToSearch.length);
+        
+        const record = recordsToSearch.find(r => (r.id || r.sourceRowIndex) === recordId);
         console.log('showCompetitionSelectionModal: Found record:', record);
         if (!record) {
             console.error('showCompetitionSelectionModal: Transaction not found in enhancedRecords');
+            console.log('showCompetitionSelectionModal: Available record IDs:', recordsToSearch.map(r => r.id || r.sourceRowIndex));
             showError('Transaction not found', 'error');
             return;
         }
