@@ -481,24 +481,13 @@ export class WeeklyDrillDownView {
         console.log('WeeklyDrillDownView: Temporarily set enhancedRecords to local transactions:', window.enhancedRecords.length);
         
         await window.showCompetitionSelectionModal(recordId, mode);
-        console.log('WeeklyDrillDownView: Modal completed, refreshing...');
+        console.log('WeeklyDrillDownView: Modal completed successfully');
         
         // The modal close function will restore the original enhancedRecords
         // But we also restore here in case of early exit
         if (window.weeklyDrillDownOriginalRecords) {
           window.enhancedRecords = window.weeklyDrillDownOriginalRecords;
           delete window.weeklyDrillDownOriginalRecords;
-        }
-        
-        // Wait a moment and check if modal actually appeared
-        await new Promise(resolve => setTimeout(resolve, 500));
-        const modalExists = document.getElementById('competition-selection-modal');
-        
-        if (!modalExists) {
-          console.log('WeeklyDrillDownView: Modal did not appear, using fallback...');
-          // Use fallback method
-          await this._showSimpleCompetitionSelection(recordId, mode);
-          return;
         }
         
         // Refresh after modal closes
@@ -513,72 +502,11 @@ export class WeeklyDrillDownView {
         alert(`Error showing competition selection: ${error.message}`);
       }
     } else {
-      console.log('WeeklyDrillDownView: Global function not found, using fallback...');
-      // Fallback to simple prompt-based selection
-      await this._showSimpleCompetitionSelection(recordId, mode);
+      console.error('WeeklyDrillDownView: Global showCompetitionSelectionModal function not found!');
+      alert('Competition selection is not available. Please refresh the page and try again.');
     }
   }
 
-  /**
-   * Simple competition selection fallback
-   * @param {number} recordId - Transaction record ID
-   * @param {string} mode - 'flag' or 'edit'
-   * @private
-   */
-  async _showSimpleCompetitionSelection(recordId, mode) {
-    try {
-      const record = this.transactions.find(r => r.id === recordId);
-      if (!record) {
-        alert('Transaction not found');
-        return;
-      }
-      
-      const competitions = await this.competitionManager.getAll({ finished: false });
-      
-      if (competitions.length === 0) {
-        alert('No active competitions available. Please create a competition first.');
-        return;
-      }
-      
-      const competitionNames = competitions.map((c, i) => `${i + 1}. ${c.name}`).join('\n');
-      let selection;
-      
-      if (mode === 'edit') {
-        selection = prompt(
-          `Current competition: ${record.winningCompetitionName || 'None'}\n\n` +
-          `Options:\n0. Remove flag\n${competitionNames}\n\nEnter number:`
-        );
-        
-        if (selection !== null) {
-          const index = parseInt(selection, 10);
-          if (index === 0) {
-            await this.transactionFlagger.unflagTransaction(recordId);
-          } else if (index > 0 && index <= competitions.length) {
-            const competition = competitions[index - 1];
-            await this.transactionFlagger.updateFlag(recordId, competition.id);
-          }
-        }
-      } else {
-        selection = prompt(`Select competition:\n${competitionNames}\n\nEnter number:`);
-        
-        if (selection) {
-          const index = parseInt(selection, 10) - 1;
-          if (index >= 0 && index < competitions.length) {
-            const competition = competitions[index];
-            await this.transactionFlagger.flagTransaction(recordId, competition.id);
-          }
-        }
-      }
-      
-      if (selection !== null) {
-        await this.refresh();
-      }
-      
-    } catch (error) {
-      console.error('WeeklyDrillDownView: Error in simple competition selection:', error);
-      alert(`Failed to ${mode} transaction: ${error.message}`);
-    }
-  }
   /**
    * Format a monetary value with currency symbol
    * @param {number|string} value - Monetary value
