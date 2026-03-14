@@ -13,7 +13,7 @@ import { WeeklySummarizer } from './weeklySummarizer.js';
 import { TransactionSummaryView } from './transactionSummaryView.js';
 import { CompetitionManager } from './competitionManager.js';
 import { TransactionFlagger } from './transactionFlagger.js';
-import { WeeklyDrillDownView } from './weeklyDrillDownView-old.js';
+import { WeeklyDrillDownView } from './weeklyDrillDownView.js';
 import { DuplicateChecker } from './duplicateChecker.js';
 import { CompetitionAccountsView } from './competitionAccountsView.js';
 import { CompetitionDetector } from './competitionDetector.js';

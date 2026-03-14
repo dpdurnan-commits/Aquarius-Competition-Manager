@@ -10,6 +10,12 @@
     <div id="debug-output"></div>
 
     <script>
+        // Capture JavaScript errors
+        window.addEventListener('error', function(e) {
+            const output = document.getElementById('debug-output');
+            output.innerHTML += `<p style="color: red;">❌ JavaScript Error: ${e.message} at ${e.filename}:${e.lineno}</p>`;
+        });
+
         async function debugProduction() {
             const output = document.getElementById('debug-output');
             
@@ -18,7 +24,7 @@
                 output.innerHTML += '<h2>API Health Check</h2>';
                 
                 try {
-                    const healthResponse = await fetch('/api/health');
+                    const healthResponse = await fetch('/health');
                     const healthData = await healthResponse.json();
                     output.innerHTML += `<p style="color: green;">✅ API Health: ${JSON.stringify(healthData)}</p>`;
                 } catch (error) {
@@ -27,7 +33,7 @@
 
                 // Test 2: Check database connection
                 try {
-                    const dbResponse = await fetch('/api/health/db');
+                    const dbResponse = await fetch('/health/db');
                     const dbData = await dbResponse.json();
                     output.innerHTML += `<p style="color: green;">✅ Database: ${JSON.stringify(dbData)}</p>`;
                 } catch (error) {
@@ -74,6 +80,33 @@
                     } catch (error) {
                         output.innerHTML += `<p style="color: red;">❌ ${file} - ${error.message}</p>`;
                     }
+                }
+
+                // Test 6: Check if main app elements exist
+                output.innerHTML += '<h2>DOM Elements Check</h2>';
+                const elements = [
+                    'competition-accounts-button',
+                    'manage-competitions-button', 
+                    'presentation-night-button',
+                    'data-viewer',
+                    'transaction-summary-section'
+                ];
+
+                for (const elementId of elements) {
+                    const element = document.getElementById(elementId);
+                    if (element) {
+                        output.innerHTML += `<p style="color: green;">✅ #${elementId} - Found</p>`;
+                    } else {
+                        output.innerHTML += `<p style="color: red;">❌ #${elementId} - Not found</p>`;
+                    }
+                }
+
+                // Test 7: Check if app.js has loaded by looking for global variables
+                output.innerHTML += '<h2>JavaScript Loading Check</h2>';
+                if (typeof window.apiClient !== 'undefined') {
+                    output.innerHTML += `<p style="color: green;">✅ apiClient - Loaded</p>`;
+                } else {
+                    output.innerHTML += `<p style="color: red;">❌ apiClient - Not loaded</p>`;
                 }
 
             } catch (error) {
