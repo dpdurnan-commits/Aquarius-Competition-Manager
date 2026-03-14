@@ -155,7 +155,17 @@ if (presentationNightButton) {
 initializeApp();
 
 // Expose functions globally for use by other components
-window.showCompetitionSelectionModal = showCompetitionSelectionModal;
+window.showCompetitionSelectionModal = async function(recordId, mode) {
+    console.log('Global showCompetitionSelectionModal called with:', recordId, mode);
+    try {
+        const result = await showCompetitionSelectionModal(recordId, mode);
+        console.log('Global showCompetitionSelectionModal completed successfully');
+        return result;
+    } catch (error) {
+        console.error('Global showCompetitionSelectionModal error:', error);
+        throw error;
+    }
+};
 window.closeCompetitionSelectionModal = closeCompetitionSelectionModal;
 window.enhancedRecords = enhancedRecords;
 /**
@@ -697,18 +707,24 @@ async function loadCompetitionNames(records) {
  * Show competition selection modal
  */
 async function showCompetitionSelectionModal(recordId, mode) {
+    console.log('showCompetitionSelectionModal: Starting with recordId:', recordId, 'mode:', mode);
     try {
         // Get the transaction record
         const record = enhancedRecords.find(r => (r.id || r.sourceRowIndex) === recordId);
+        console.log('showCompetitionSelectionModal: Found record:', record);
         if (!record) {
+            console.error('showCompetitionSelectionModal: Transaction not found in enhancedRecords');
             showError('Transaction not found', 'error');
             return;
         }
         
         // Get only active (unfinished) competitions for flagging
+        console.log('showCompetitionSelectionModal: Getting competitions...');
         const competitions = await competitionManager.getAll({ finished: false });
+        console.log('showCompetitionSelectionModal: Found competitions:', competitions.length);
         
         // Create modal HTML
+        console.log('showCompetitionSelectionModal: Creating modal...');
         const modal = document.createElement('div');
         modal.className = 'competition-selection-modal';
         modal.id = 'competition-selection-modal';
@@ -771,18 +787,43 @@ async function showCompetitionSelectionModal(recordId, mode) {
         `;
         
         modal.innerHTML = modalContent;
+        
+        // Force modal visibility with inline styles to override any conflicting CSS
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.right = '0';
+        modal.style.bottom = '0';
+        modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        modal.style.display = 'flex';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+        modal.style.zIndex = '2000';
+        modal.style.visibility = 'visible';
+        modal.style.opacity = '1';
+        
+        console.log('showCompetitionSelectionModal: Appending modal to body...');
         document.body.appendChild(modal);
+        
+        // Add a slight delay to ensure modal is rendered
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        console.log('showCompetitionSelectionModal: Modal should now be visible with forced styles');
         
         // Attach event listeners
         const cancelBtn = document.getElementById('modal-cancel-btn');
-        cancelBtn.addEventListener('click', () => {
-            closeCompetitionSelectionModal();
-        });
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                console.log('showCompetitionSelectionModal: Cancel button clicked');
+                closeCompetitionSelectionModal();
+            });
+        }
         
         if (mode === 'edit') {
             const unflagBtn = document.getElementById('modal-unflag-btn');
             if (unflagBtn) {
                 unflagBtn.addEventListener('click', async () => {
+                    console.log('showCompetitionSelectionModal: Unflag button clicked');
                     await handleUnflagTransaction(recordId);
                 });
             }
@@ -790,9 +831,11 @@ async function showCompetitionSelectionModal(recordId, mode) {
         
         // Attach competition option click handlers
         const competitionOptions = document.querySelectorAll('.competition-option');
+        console.log('showCompetitionSelectionModal: Found competition options:', competitionOptions.length);
         competitionOptions.forEach(option => {
             option.addEventListener('click', async () => {
                 const competitionId = parseInt(option.dataset.competitionId, 10);
+                console.log('showCompetitionSelectionModal: Competition option clicked:', competitionId);
                 await handleCompetitionSelection(recordId, competitionId, mode);
             });
         });
@@ -800,6 +843,7 @@ async function showCompetitionSelectionModal(recordId, mode) {
         // Close modal on overlay click
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
+                console.log('showCompetitionSelectionModal: Overlay clicked');
                 closeCompetitionSelectionModal();
             }
         });
@@ -816,6 +860,7 @@ async function showCompetitionSelectionModal(recordId, mode) {
         const keyboardHandler = (e) => {
             // Close modal on Escape key
             if (e.key === 'Escape') {
+                console.log('showCompetitionSelectionModal: Escape key pressed');
                 closeCompetitionSelectionModal();
                 document.removeEventListener('keydown', keyboardHandler);
                 return;
@@ -857,8 +902,27 @@ async function showCompetitionSelectionModal(recordId, mode) {
         
         document.addEventListener('keydown', keyboardHandler);
         
+        console.log('showCompetitionSelectionModal: Setup complete, modal should be visible');
+        
+        // Debug: Check if modal is actually in DOM and visible
+        const modalCheck = document.getElementById('competition-selection-modal');
+        console.log('showCompetitionSelectionModal: Modal check - exists:', !!modalCheck);
+        if (modalCheck) {
+            console.log('showCompetitionSelectionModal: Modal styles:', {
+                display: modalCheck.style.display,
+                visibility: modalCheck.style.visibility,
+                zIndex: modalCheck.style.zIndex,
+                position: modalCheck.style.position
+            });
+            console.log('showCompetitionSelectionModal: Modal computed styles:', {
+                display: window.getComputedStyle(modalCheck).display,
+                visibility: window.getComputedStyle(modalCheck).visibility,
+                zIndex: window.getComputedStyle(modalCheck).zIndex
+            });
+        }
+        
     } catch (error) {
-        console.error('Error showing competition selection modal:', error);
+        console.error('showCompetitionSelectionModal: Error occurred:', error);
         showError('Failed to load competitions. Please try again.', 'error');
     }
 }

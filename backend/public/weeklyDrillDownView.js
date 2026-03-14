@@ -482,6 +482,25 @@ export class WeeklyDrillDownView {
         await window.showCompetitionSelectionModal(recordId, mode);
         console.log('WeeklyDrillDownView: Modal completed, refreshing...');
         
+        // Wait a moment and check if modal actually appeared
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const modalExists = document.getElementById('competition-selection-modal');
+        
+        if (!modalExists) {
+          console.log('WeeklyDrillDownView: Modal did not appear, using fallback...');
+          // Clean up - remove the record if we added it
+          if (existingIndex === -1) {
+            const addedIndex = window.enhancedRecords.findIndex(r => (r.id || r.sourceRowIndex) === recordId);
+            if (addedIndex !== -1) {
+              window.enhancedRecords.splice(addedIndex, 1);
+            }
+          }
+          
+          // Use fallback method
+          await this._showSimpleCompetitionSelection(recordId, mode);
+          return;
+        }
+        
         // Clean up - remove the record if we added it
         if (existingIndex === -1) {
           const addedIndex = window.enhancedRecords.findIndex(r => (r.id || r.sourceRowIndex) === recordId);
