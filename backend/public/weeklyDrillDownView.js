@@ -455,12 +455,49 @@ export class WeeklyDrillDownView {
    * @private
    */
   async _showCompetitionSelectionModal(recordId, mode) {
+    console.log('WeeklyDrillDownView: Attempting to show competition selection modal for record:', recordId, 'mode:', mode);
+    
+    // Find the transaction record in our local transactions array
+    const record = this.transactions.find(r => r.id === recordId);
+    if (!record) {
+      console.error('WeeklyDrillDownView: Transaction not found in local transactions');
+      alert('Transaction not found');
+      return;
+    }
+    
     // Get the global showCompetitionSelectionModal function from main app
     if (typeof window.showCompetitionSelectionModal === 'function') {
-      await window.showCompetitionSelectionModal(recordId, mode);
-      // Refresh after modal closes
-      await this.refresh();
+      console.log('WeeklyDrillDownView: Global showCompetitionSelectionModal function found, calling it...');
+      try {
+        // Temporarily add the record to enhancedRecords so the modal can find it
+        const originalEnhancedRecords = window.enhancedRecords || [];
+        window.enhancedRecords = window.enhancedRecords || [];
+        
+        // Check if record already exists
+        const existingIndex = window.enhancedRecords.findIndex(r => (r.id || r.sourceRowIndex) === recordId);
+        if (existingIndex === -1) {
+          window.enhancedRecords.push(record);
+        }
+        
+        await window.showCompetitionSelectionModal(recordId, mode);
+        console.log('WeeklyDrillDownView: Modal completed, refreshing...');
+        
+        // Clean up - remove the record if we added it
+        if (existingIndex === -1) {
+          const addedIndex = window.enhancedRecords.findIndex(r => (r.id || r.sourceRowIndex) === recordId);
+          if (addedIndex !== -1) {
+            window.enhancedRecords.splice(addedIndex, 1);
+          }
+        }
+        
+        // Refresh after modal closes
+        await this.refresh();
+      } catch (error) {
+        console.error('WeeklyDrillDownView: Error in showCompetitionSelectionModal:', error);
+        alert(`Error showing competition selection: ${error.message}`);
+      }
     } else {
+      console.log('WeeklyDrillDownView: Global function not found, using fallback...');
       // Fallback to simple prompt-based selection
       await this._showSimpleCompetitionSelection(recordId, mode);
     }

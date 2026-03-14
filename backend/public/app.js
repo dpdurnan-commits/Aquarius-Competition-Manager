@@ -157,6 +157,7 @@ initializeApp();
 // Expose functions globally for use by other components
 window.showCompetitionSelectionModal = showCompetitionSelectionModal;
 window.closeCompetitionSelectionModal = closeCompetitionSelectionModal;
+window.enhancedRecords = enhancedRecords;
 /**
  * Initialize application
  */
