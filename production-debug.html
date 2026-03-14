@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Debug</title>
+</head>
+<body>
+    <h1>Production Debug</h1>
+    <div id="debug-output"></div>
+
+    <script>
+        async function debugProduction() {
+            const output = document.getElementById('debug-output');
+            
+            try {
+                // Test 1: Check if we can reach the API
+                output.innerHTML += '<h2>API Health Check</h2>';
+                
+                try {
+                    const healthResponse = await fetch('/api/health');
+                    const healthData = await healthResponse.json();
+                    output.innerHTML += `<p style="color: green;">✅ API Health: ${JSON.stringify(healthData)}</p>`;
+                } catch (error) {
+                    output.innerHTML += `<p style="color: red;">❌ API Health failed: ${error.message}</p>`;
+                }
+
+                // Test 2: Check database connection
+                try {
+                    const dbResponse = await fetch('/api/health/db');
+                    const dbData = await dbResponse.json();
+                    output.innerHTML += `<p style="color: green;">✅ Database: ${JSON.stringify(dbData)}</p>`;
+                } catch (error) {
+                    output.innerHTML += `<p style="color: red;">❌ Database failed: ${error.message}</p>`;
+                }
+
+                // Test 3: Check weekly summaries
+                try {
+                    const summariesResponse = await fetch('/api/summaries/weekly');
+                    const summariesData = await summariesResponse.json();
+                    output.innerHTML += `<p style="color: green;">✅ Weekly Summaries: ${summariesData.summaries.length} summaries found</p>`;
+                } catch (error) {
+                    output.innerHTML += `<p style="color: red;">❌ Weekly Summaries failed: ${error.message}</p>`;
+                }
+
+                // Test 4: Check presentation seasons
+                try {
+                    const seasonsResponse = await fetch('/api/presentation-seasons');
+                    const seasonsData = await seasonsResponse.json();
+                    output.innerHTML += `<p style="color: green;">✅ Presentation Seasons: ${seasonsData.seasons.length} seasons found</p>`;
+                } catch (error) {
+                    output.innerHTML += `<p style="color: red;">❌ Presentation Seasons failed: ${error.message}</p>`;
+                }
+
+                // Test 5: Check static files
+                output.innerHTML += '<h2>Static Files Check</h2>';
+                const staticFiles = [
+                    '/app.js',
+                    '/apiClient.js', 
+                    '/competitionManagementView.js',
+                    '/presentationNightView.js',
+                    '/transactionSummaryView.js',
+                    '/weeklyDrillDownView.js'
+                ];
+
+                for (const file of staticFiles) {
+                    try {
+                        const response = await fetch(file);
+                        if (response.ok) {
+                            output.innerHTML += `<p style="color: green;">✅ ${file} - OK</p>`;
+                        } else {
+                            output.innerHTML += `<p style="color: red;">❌ ${file} - ${response.status}</p>`;
+                        }
+                    } catch (error) {
+                        output.innerHTML += `<p style="color: red;">❌ ${file} - ${error.message}</p>`;
+                    }
+                }
+
+            } catch (error) {
+                output.innerHTML += `<p style="color: red;">❌ Debug failed: ${error.message}</p>`;
+            }
+        }
+
+        // Run debug on page load
+        debugProduction();
+    </script>
+</body>
+</html>

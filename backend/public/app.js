@@ -116,7 +116,14 @@ saveToDbButton.addEventListener('click', handleSaveToDatabase);
 resetDbButton.addEventListener('click', handleResetDatabase);
 if (manageCompetitionsButton) {
     console.log('Attaching event listener to manage competitions button');
-    manageCompetitionsButton.addEventListener('click', showCompetitionResultsView);
+    manageCompetitionsButton.addEventListener('click', (e) => {
+        console.log('Manage Competitions button clicked');
+        e.preventDefault();
+        showCompetitionResultsView().catch(error => {
+            console.error('Error in showCompetitionResultsView:', error);
+            showError('Failed to load Manage Competitions view: ' + error.message, 'error');
+        });
+    });
 } else {
     console.error('manageCompetitionsButton not found!');
 }
@@ -124,10 +131,24 @@ if (checkDuplicatesButton) {
     checkDuplicatesButton.addEventListener('click', handleCheckDuplicates);
 }
 if (competitionAccountsButton) {
-    competitionAccountsButton.addEventListener('click', showCompetitionAccountsView);
+    competitionAccountsButton.addEventListener('click', (e) => {
+        console.log('Competition Accounts button clicked');
+        e.preventDefault();
+        showCompetitionAccountsView().catch(error => {
+            console.error('Error in showCompetitionAccountsView:', error);
+            showError('Failed to load Competition Accounts view: ' + error.message, 'error');
+        });
+    });
 }
 if (presentationNightButton) {
-    presentationNightButton.addEventListener('click', showPresentationNightView);
+    presentationNightButton.addEventListener('click', (e) => {
+        console.log('Presentation Night button clicked');
+        e.preventDefault();
+        showPresentationNightView().catch(error => {
+            console.error('Error in showPresentationNightView:', error);
+            showError('Failed to load Presentation Night view: ' + error.message, 'error');
+        });
+    });
 }
 
 // Initialize database and load existing summaries
@@ -1089,10 +1110,33 @@ async function showCompetitionResultsView() {
                 console.log('CompetitionManagementView rendered successfully');
             } catch (error) {
                 console.error('Error initializing Competition Management View:', error);
-                showError('Failed to load Competition Management View', 'error');
+                // Fallback: Show a basic message
+                const container = document.getElementById('competition-accounts-container');
+                if (container) {
+                    container.innerHTML = `
+                        <div style="padding: 20px; text-align: center;">
+                            <h2>Competition Management</h2>
+                            <p>Competition management features are temporarily unavailable.</p>
+                            <p>Error: ${error.message}</p>
+                            <button onclick="location.reload()" style="padding: 10px 20px; margin-top: 10px;">Reload Page</button>
+                        </div>
+                    `;
+                }
+                showError('Failed to load Competition Management View: ' + error.message, 'error');
             }
         } else {
             console.error('competitionManagementView is null or undefined');
+            // Fallback: Show a basic message
+            const container = document.getElementById('competition-accounts-container');
+            if (container) {
+                container.innerHTML = `
+                    <div style="padding: 20px; text-align: center;">
+                        <h2>Competition Management</h2>
+                        <p>Competition management component not loaded.</p>
+                        <button onclick="location.reload()" style="padding: 10px 20px; margin-top: 10px;">Reload Page</button>
+                    </div>
+                `;
+            }
         }
     } else {
         console.error('competitionAccountsSection not found');
