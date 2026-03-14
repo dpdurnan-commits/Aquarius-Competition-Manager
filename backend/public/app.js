@@ -961,22 +961,25 @@ async function handleCompetitionSelection(recordId, competitionId, mode) {
             await transactionFlagger.flagTransaction(recordId, competitionId);
         }
         
-        // Reload ONLY the records currently in view (not all database records)
-        // Get the IDs of records currently displayed
-        const currentRecordIds = enhancedRecords.map(r => r.id).filter(id => id !== undefined);
+        // If called from WeeklyDrillDownView, skip re-rendering the main records table
+        // The WeeklyDrillDownView will handle its own refresh after the modal closes
+        const calledFromDrillDown = !!window.weeklyDrillDownOriginalRecords;
         
-        if (currentRecordIds.length > 0) {
-            // Reload only the records that are currently displayed
-            const allRecords = await apiClient.getAll();
-            enhancedRecords = allRecords.filter(r => currentRecordIds.includes(r.id));
-        } else {
-            // If no IDs (shouldn't happen after save), reload all
-            const allRecords = await apiClient.getAll();
-            enhancedRecords = allRecords;
+        if (!calledFromDrillDown) {
+            // Reload ONLY the records currently in view (not all database records)
+            const currentRecordIds = enhancedRecords.map(r => r.id).filter(id => id !== undefined);
+            
+            if (currentRecordIds.length > 0) {
+                const allRecords = await apiClient.getAll();
+                enhancedRecords = allRecords.filter(r => currentRecordIds.includes(r.id));
+            } else {
+                const allRecords = await apiClient.getAll();
+                enhancedRecords = allRecords;
+            }
+            
+            // Re-render the table
+            await renderRecords(enhancedRecords);
         }
-        
-        // Re-render the table
-        await renderRecords(enhancedRecords);
         
         // Reload and display summaries
         await loadAndDisplaySummaries();

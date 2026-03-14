@@ -493,7 +493,7 @@ export class WeeklyDrillDownView {
           delete window.weeklyDrillDownOriginalRecords;
         }
         
-        // Refresh after modal closes
+        // Refresh the weekly drill-down view with updated data
         await this.refresh();
       } catch (error) {
         console.error('WeeklyDrillDownView: Error in showCompetitionSelectionModal:', error);
