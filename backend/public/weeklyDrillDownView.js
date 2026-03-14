@@ -468,19 +468,27 @@ export class WeeklyDrillDownView {
     // Get the global showCompetitionSelectionModal function from main app
     if (typeof window.showCompetitionSelectionModal === 'function') {
       console.log('WeeklyDrillDownView: Global showCompetitionSelectionModal function found, calling it...');
+      
+      // Store the original enhancedRecords to restore later
+      const originalEnhancedRecords = window.enhancedRecords ? [...window.enhancedRecords] : [];
+      
       try {
-        // Temporarily add the record to enhancedRecords so the modal can find it
-        const originalEnhancedRecords = window.enhancedRecords || [];
-        window.enhancedRecords = window.enhancedRecords || [];
+        // Temporarily replace enhancedRecords with our local transactions
+        // This ensures the modal can find the record even if the main app cleared its data
+        window.weeklyDrillDownOriginalRecords = originalEnhancedRecords;
+        window.enhancedRecords = [...this.transactions];
         
-        // Check if record already exists
-        const existingIndex = window.enhancedRecords.findIndex(r => (r.id || r.sourceRowIndex) === recordId);
-        if (existingIndex === -1) {
-          window.enhancedRecords.push(record);
-        }
+        console.log('WeeklyDrillDownView: Temporarily set enhancedRecords to local transactions:', window.enhancedRecords.length);
         
         await window.showCompetitionSelectionModal(recordId, mode);
         console.log('WeeklyDrillDownView: Modal completed, refreshing...');
+        
+        // The modal close function will restore the original enhancedRecords
+        // But we also restore here in case of early exit
+        if (window.weeklyDrillDownOriginalRecords) {
+          window.enhancedRecords = window.weeklyDrillDownOriginalRecords;
+          delete window.weeklyDrillDownOriginalRecords;
+        }
         
         // Wait a moment and check if modal actually appeared
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -488,31 +496,20 @@ export class WeeklyDrillDownView {
         
         if (!modalExists) {
           console.log('WeeklyDrillDownView: Modal did not appear, using fallback...');
-          // Clean up - remove the record if we added it
-          if (existingIndex === -1) {
-            const addedIndex = window.enhancedRecords.findIndex(r => (r.id || r.sourceRowIndex) === recordId);
-            if (addedIndex !== -1) {
-              window.enhancedRecords.splice(addedIndex, 1);
-            }
-          }
-          
           // Use fallback method
           await this._showSimpleCompetitionSelection(recordId, mode);
           return;
-        }
-        
-        // Clean up - remove the record if we added it
-        if (existingIndex === -1) {
-          const addedIndex = window.enhancedRecords.findIndex(r => (r.id || r.sourceRowIndex) === recordId);
-          if (addedIndex !== -1) {
-            window.enhancedRecords.splice(addedIndex, 1);
-          }
         }
         
         // Refresh after modal closes
         await this.refresh();
       } catch (error) {
         console.error('WeeklyDrillDownView: Error in showCompetitionSelectionModal:', error);
+        // Restore original enhancedRecords on error
+        if (window.weeklyDrillDownOriginalRecords) {
+          window.enhancedRecords = window.weeklyDrillDownOriginalRecords;
+          delete window.weeklyDrillDownOriginalRecords;
+        }
         alert(`Error showing competition selection: ${error.message}`);
       }
     } else {

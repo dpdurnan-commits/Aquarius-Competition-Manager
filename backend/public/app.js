@@ -935,6 +935,13 @@ function closeCompetitionSelectionModal() {
     if (modal) {
         modal.remove();
     }
+    
+    // Restore original enhancedRecords if it was temporarily modified by WeeklyDrillDownView
+    if (window.weeklyDrillDownOriginalRecords) {
+        console.log('Restoring original enhancedRecords after modal close');
+        window.enhancedRecords = window.weeklyDrillDownOriginalRecords;
+        delete window.weeklyDrillDownOriginalRecords;
+    }
 }
 
 /**
