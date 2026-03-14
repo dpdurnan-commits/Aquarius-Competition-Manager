@@ -947,14 +947,6 @@ function closeCompetitionSelectionModal() {
         window.enhancedRecords = window.weeklyDrillDownOriginalRecords;
         delete window.weeklyDrillDownOriginalRecords;
     }
-    
-    // Trigger WeeklyDrillDownView refresh if registered
-    if (typeof window.weeklyDrillDownRefreshCallback === 'function') {
-        console.log('Triggering WeeklyDrillDownView refresh after modal close');
-        const cb = window.weeklyDrillDownRefreshCallback;
-        delete window.weeklyDrillDownRefreshCallback;
-        cb();
-    }
 }
 
 /**
@@ -997,6 +989,14 @@ async function handleCompetitionSelection(recordId, competitionId, mode) {
         closeCompetitionSelectionModal();
         
         showError(`Transaction ${mode === 'edit' ? 'updated' : 'flagged'} successfully.`, 'warning');
+        
+        // Refresh WeeklyDrillDownView after all operations complete
+        if (typeof window.weeklyDrillDownRefreshCallback === 'function') {
+            console.log('Triggering WeeklyDrillDownView refresh after flag operation');
+            const cb = window.weeklyDrillDownRefreshCallback;
+            delete window.weeklyDrillDownRefreshCallback;
+            await cb();
+        }
         
     } catch (error) {
         hideLoading();
@@ -1051,6 +1051,14 @@ async function handleUnflagTransaction(recordId) {
         closeCompetitionSelectionModal();
         
         showError('Transaction unflagged successfully.', 'warning');
+        
+        // Refresh WeeklyDrillDownView after all operations complete
+        if (typeof window.weeklyDrillDownRefreshCallback === 'function') {
+            console.log('Triggering WeeklyDrillDownView refresh after unflag operation');
+            const cb = window.weeklyDrillDownRefreshCallback;
+            delete window.weeklyDrillDownRefreshCallback;
+            await cb();
+        }
         
     } catch (error) {
         hideLoading();
