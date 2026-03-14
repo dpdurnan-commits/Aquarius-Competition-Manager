@@ -815,7 +815,7 @@ async function showCompetitionSelectionModal(recordId, mode) {
         console.log('showCompetitionSelectionModal: Modal should now be visible with forced styles');
         
         // Attach event listeners
-        const cancelBtn = document.getElementById('modal-cancel-btn');
+        const cancelBtn = modal.querySelector('#modal-cancel-btn');
         if (cancelBtn) {
             cancelBtn.addEventListener('click', () => {
                 console.log('showCompetitionSelectionModal: Cancel button clicked');
@@ -824,7 +824,8 @@ async function showCompetitionSelectionModal(recordId, mode) {
         }
         
         if (mode === 'edit') {
-            const unflagBtn = document.getElementById('modal-unflag-btn');
+            const unflagBtn = modal.querySelector('#modal-unflag-btn');
+            console.log('showCompetitionSelectionModal: Unflag button found:', !!unflagBtn);
             if (unflagBtn) {
                 unflagBtn.addEventListener('click', async () => {
                     console.log('showCompetitionSelectionModal: Unflag button clicked');
@@ -1011,26 +1012,29 @@ async function handleCompetitionSelection(recordId, competitionId, mode) {
  */
 async function handleUnflagTransaction(recordId) {
     try {
+        console.log('handleUnflagTransaction: Starting for recordId:', recordId);
         showLoading();
         
         await transactionFlagger.unflagTransaction(recordId);
+        console.log('handleUnflagTransaction: Unflag successful');
         
-        // Reload ONLY the records currently in view (not all database records)
-        // Get the IDs of records currently displayed
-        const currentRecordIds = enhancedRecords.map(r => r.id).filter(id => id !== undefined);
+        // If called from WeeklyDrillDownView, skip re-rendering the main records table
+        const calledFromDrillDown = !!window.weeklyDrillDownOriginalRecords;
         
-        if (currentRecordIds.length > 0) {
-            // Reload only the records that are currently displayed
-            const allRecords = await apiClient.getAll();
-            enhancedRecords = allRecords.filter(r => currentRecordIds.includes(r.id));
-        } else {
-            // If no IDs (shouldn't happen after save), reload all
-            const allRecords = await apiClient.getAll();
-            enhancedRecords = allRecords;
+        if (!calledFromDrillDown) {
+            // Reload ONLY the records currently in view
+            const currentRecordIds = enhancedRecords.map(r => r.id).filter(id => id !== undefined);
+            
+            if (currentRecordIds.length > 0) {
+                const allRecords = await apiClient.getAll();
+                enhancedRecords = allRecords.filter(r => currentRecordIds.includes(r.id));
+            } else {
+                const allRecords = await apiClient.getAll();
+                enhancedRecords = allRecords;
+            }
+            
+            await renderRecords(enhancedRecords);
         }
-        
-        // Re-render the table
-        await renderRecords(enhancedRecords);
         
         // Reload and display summaries
         await loadAndDisplaySummaries();

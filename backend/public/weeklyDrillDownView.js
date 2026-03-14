@@ -486,8 +486,7 @@ export class WeeklyDrillDownView {
         await window.showCompetitionSelectionModal(recordId, mode);
         console.log('WeeklyDrillDownView: Modal completed successfully');
         
-        // The modal close function will restore the original enhancedRecords
-        // But we also restore here in case of early exit
+        // Restore the original enhancedRecords
         if (window.weeklyDrillDownOriginalRecords) {
           window.enhancedRecords = window.weeklyDrillDownOriginalRecords;
           delete window.weeklyDrillDownOriginalRecords;
