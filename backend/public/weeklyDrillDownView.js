@@ -58,8 +58,19 @@ export class WeeklyDrillDownView {
         return;
       }
       
+      console.log('WeeklyDrillDownView: Container found/created:', container);
+      console.log('WeeklyDrillDownView: Container parent:', container.parentElement);
+      console.log('WeeklyDrillDownView: Container display style:', container.style.display);
+      
       // Show container and create content
       container.style.display = 'block';
+      container.style.visibility = 'visible';
+      container.style.opacity = '1';
+      container.style.position = 'relative';
+      container.style.zIndex = '1000';
+      container.style.backgroundColor = '#ffeb3b'; // Bright yellow for debugging
+      container.style.border = '2px solid red'; // Red border for debugging
+      container.style.minHeight = '200px'; // Ensure minimum height
       container.innerHTML = `
         <div class="weekly-transactions-header">
           <h3>Transactions for Week ${this.formatDate(weekStart)} to ${this.formatDate(weekEnd)}</h3>
